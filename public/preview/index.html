@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Safeguard Deal Sheet Generator</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- html2pdf.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+  <div class="toolbar">
+    <button id="generatePdf">Generate PDF</button>
+  </div>
+
+  <div id="page" class="page letter">
+    <header class="header">
+      <img src="assets/Safeguard_Logo_Cropped.png" class="logo" alt="Safeguard Logo" />
+      <div class="phone">877-280-5771</div>
+      <div class="tagline">Private Lending Secured by Real Estate</div>
+    </header>
+
+    <main class="content">
+      <section class="left photos">
+        <div class="photo hero"><span>MAIN EXTERIOR PHOTO</span></div>
+        <div class="grid">
+          <div class="photo slot"><span>INTERIOR PHOTO 1</span></div>
+          <div class="photo slot"><span>INTERIOR PHOTO 2</span></div>
+          <div class="photo slot"><span>INTERIOR PHOTO 3</span></div>
+          <div class="photo slot"><span>INTERIOR PHOTO 4</span></div>
+        </div>
+      </section>
+
+      <section class="right info">
+        <div class="card">
+          <h2>LOAN SUMMARY</h2>
+          <div class="kv-grid">
+            <div class="kv"><div class="k">LOAN #</div><div class="v">2365662</div></div>
+            <div class="kv"><div class="k">AMOUNT</div><div class="v">$34,950</div></div>
+            <div class="kv"><div class="k">RATE / TYPE</div><div class="v">9% interest-only</div></div>
+            <div class="kv"><div class="k">TERM</div><div class="v">60 months</div></div>
+            <div class="kv"><div class="k">MONTHLY RETURN</div><div class="v">$262</div></div>
+            <div class="kv"><div class="k">LTV</div><div class="v">55% LTV</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>PROPERTY DETAILS</h2>
+          <div class="facts">
+            <div class="row"><div class="label">Address:</div><div class="value">3837 East 140th St, Cleveland, OH 44128</div></div>
+            <div class="row"><div class="label">Appraisal:</div><div class="value">$63,000</div></div>
+            <div class="row"><div class="label">Rent:</div><div class="value">$850</div></div>
+            <div class="row"><div class="label">Square Footage:</div><div class="value">2,028 sq ft</div></div>
+            <div class="row"><div class="label">Beds / Baths:</div><div class="value">6 BR / 3 BA</div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <section class="overview">
+      <h2>MARKET OVERVIEW — <span id="v-marketLocation">TOLEDO, OHIO</span></h2>
+      <p id="v-marketOverview">
+        Toledo, Ohio is a five star logistics region with access to Cleveland, Columbus, Dayton, Chicago and Detroit.
+        The city has become well known for its industry in glass and auto assembly as well as healthcare and local sports.
+        With its many nearby universities and large public school system, Toledo has established itself as an economic pillar
+        in the state of Ohio. Toledo was recently voted the 2nd most affordable housing market for the US middle class
+        and ranked 3rd best market for investing in single-family turnkey rentals.
+      </p>
+      <div class="deal-info-block" style="display:none">
+        <h2>DEAL INFORMATION</h2>
+        <p id="v-dealInformation">Deal-specific information will appear here.</p>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <hr />
+      <p>Safeguard Capital Partners</p>
+      <p>105 N College St, Martinsburg, WV 25401 | www.SafeguardCapitalPartners.com</p>
+    </footer>
+  </div>
+
+  <script src="script.js"></script>
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="populate.js"></script>
+</body>
+</html>

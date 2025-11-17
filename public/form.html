@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Safeguard Deal Sheet</title>
+  <link rel="stylesheet" href="./styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+  <div class="toolbar">
+    <h2 class="form-title">Deal Sheet Generator</h2>
+
+    <form id="dealForm" class="form-card" autocomplete="off">
+      <div class="form-section">
+        <h3>Loan Summary</h3>
+        <label><span>Loan #</span>
+          <input name="loanNumber" placeholder="e.g. 2365662" required />
+          <button type="button" id="genLoanBtn" title="Generate loan number">Generate</button>
+        </label>
+        <label><span>Amount</span><input name="amount" placeholder="$34,950" required /></label>
+        <label><span>Rate / Type</span><input name="rateType" placeholder="9% interest-only" required /></label>
+        <label><span>Term</span><input name="term" placeholder="60 months" required /></label>
+        <label><span>Monthly Return</span><input name="monthlyReturn" placeholder="$262" required /></label>
+        <label><span>LTV</span><input name="ltv" placeholder="55% LTV" required /></label>
+      </div>
+
+      <div class="form-section">
+        <h3>Property Details</h3>
+        <label><span>Address</span><input name="address" placeholder="3837 East 140th St, Cleveland, OH 44128" required /></label>
+        <label><span>Appraisal</span><input name="appraisal" placeholder="$63,000" required /></label>
+        <label><span>Rent</span><input name="rent" placeholder="$850" required /></label>
+        <label><span>Square Footage</span><input name="sqft" placeholder="2,028" /></label>
+        <label><span>Beds / Baths</span><input name="bedsBaths" placeholder="6 BR / 3 BA" /></label>
+        <label><span>Market Location</span><input name="marketLocation" placeholder="City, State (e.g. Toledo, OH)" /></label>
+        <label><span>Market Overview</span><textarea name="marketOverview" placeholder="Short market overview"></textarea></label>
+  <label><span>Deal Information</span><textarea name="dealInformation" placeholder="Details about this deal"></textarea></label>
+      </div>
+
+      <div class="form-section">
+        <h3>Photos (optional)</h3>
+
+        <div class="drop-wrap" data-name="hero">
+          <label class="dropzone"><span>Main Exterior</span><input type="file" name="hero" accept="image/*" /></label>
+          <img id="thumb-hero" class="thumb" alt="" />
+        </div>
+
+        <div class="drop-wrap" data-name="int1">
+          <label class="dropzone"><span>Interior 1</span><input type="file" name="int1" accept="image/*" /></label>
+          <img id="thumb-int1" class="thumb" alt="" />
+        </div>
+
+        <div class="drop-wrap" data-name="int2">
+          <label class="dropzone"><span>Interior 2</span><input type="file" name="int2" accept="image/*" /></label>
+          <img id="thumb-int2" class="thumb" alt="" />
+        </div>
+
+        <div class="drop-wrap" data-name="int3">
+          <label class="dropzone"><span>Interior 3</span><input type="file" name="int3" accept="image/*" /></label>
+          <img id="thumb-int3" class="thumb" alt="" />
+        </div>
+
+        <div class="drop-wrap" data-name="int4">
+          <label class="dropzone"><span>Interior 4</span><input type="file" name="int4" accept="image/*" /></label>
+          <img id="thumb-int4" class="thumb" alt="" />
+        </div>
+
+        <div class="pdf-upload-wrap">
+          <label class="pdf-upload-label"><span>Attach PDF (optional)</span>
+            <input type="file" name="attachedPdf" accept="application/pdf" />
+          </label>
+          <span id="pdf-upload-filename" style="font-size:12px;color:#555;margin-left:8px;"></span>
+        </div>
+
+      </div>
+
+      <div class="form-actions">
+        <button type="button" id="saveBtn" style="background:#28a745;color:white;padding:12px 24px;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Save Deal</button>
+        <button type="button" id="previewBtn">Preview</button>
+        <button type="button" id="pdfBtn">Generate & Upload PDF</button>
+        <a href="/" style="padding:12px 24px;text-decoration:none;color:#666;border:1px solid #ccc;border-radius:4px;display:inline-block;">← Back to List</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- Preview/preview generation moved to /preview/index.html. The main page only contains the form. -->
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

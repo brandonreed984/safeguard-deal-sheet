@@ -1,0 +1,187 @@
+/* Safeguard Deal Sheet — CSS you can tweak freely */
+:root {
+  --blue: #1E66B4;
+  --muted: #3C3C3C;
+  --card: #F2F5F8;
+  --stroke: #D2D2D2;
+  --text: #141414;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #f0f2f4;
+}
+
+.toolbar {
+  padding: 12px;
+  background: #fff;
+  border-bottom: 1px solid #e6e6e6;
+  position: sticky;
+  top: 0;
+}
+
+.toolbar button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid #d0d0d0;
+  background: var(--blue);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.page.letter {
+  width: 8.5in;
+  height: 11in;
+  margin: 20px auto;
+  padding: 0.5in;
+  background: #fff;
+  position: relative;
+}
+.page.gradient {
+  /* Removed gradient for PDF clarity; keep solid white background */
+  background: #FFFFFF;
+}
+
+/* Header */
+.header {
+  position: relative;
+  height: 1.5in;
+}
+.header .logo {
+  position: absolute;
+  top: -0.2in;
+  left: -0.2in;
+  height: 1in;
+}
+.header .phone {
+  position: absolute;
+  top: 0.2in;
+  right: 0.2in;
+  font-size: 18pt;
+  color: var(--blue);
+  font-weight: 700;
+}
+.header .tagline {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 1.1in;
+  margin-bottom: 0.2in;
+  font-weight: 700;
+  color: var(--text);
+  font-size: 18pt;
+  white-space: nowrap;
+}
+
+/* Body grid */
+.content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 0.2in;
+  margin-top: 0.15in;
+}
+.left .hero {
+  height: 2.8in;
+}
+.left .grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 0.15in;
+  margin-top: 0.15in;
+  height: 2.8in;
+}
+.photo {
+  background: #F5F5F5;
+  border: 2px solid var(--stroke);
+  border-radius: 14px;
+  position: relative;
+}
+.photo.hero {
+  height: 2.8in;
+}
+.photo.slot {
+  height: 1.25in;
+}
+.photo span {
+  position: absolute; left: 12px; top: 12px;
+  font-weight: 700; color: var(--muted);
+}
+
+.right .card {
+  background: var(--card);
+  border: 1.5px solid var(--stroke);
+  border-radius: 14px;
+  padding: 0.2in;
+  margin-bottom: 0.2in;
+  height: 2.8in;
+  box-sizing: border-box;
+}
+.right .card:last-child {
+  height: 2.8in;
+}
+.right .card h2 {
+  color: var(--blue);
+  margin: 0 0 0.15in 0;
+  font-size: 15pt;
+}
+
+/* Loan Summary grid */
+.kv-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-column-gap: 0.25in;
+  grid-row-gap: 0.18in;
+}
+.kv .k {
+  font-weight: 800; color: var(--text); font-size: 12pt; margin-bottom: 2px;
+}
+.kv .v {
+  font-weight: 500; color: var(--text); font-size: 12pt;
+}
+
+/* Property Details facts */
+.facts .row {
+  display: grid;
+  grid-template-columns: 1.8in 1fr;
+  align-items: baseline;
+  margin-bottom: 0.12in;
+}
+.facts .label {
+  font-weight: 800; color: var(--text); font-size: 12pt;
+}
+.facts .value {
+  color: var(--muted); font-size: 12pt;
+}
+
+/* Overview */
+.overview {
+  margin-top: 0.15in;
+}
+.overview h2,
+.deal-info-block h2 {
+  font-size: 13pt;
+  margin-bottom: 0.08in;
+}
+.overview p {
+  color: var(--muted);
+  font-size: 11pt;
+  line-height: 1.3;
+  margin: 0;
+  max-width: 7in;
+}
+
+/* Footer */
+.footer {
+  position: absolute;
+  left: 0.5in; right: 0.5in; bottom: 0.4in;
+  color: var(--muted); font-size: 11pt;
+  text-align: center;
+}
+.footer hr {
+  border: none; border-top: 2px solid var(--stroke); margin-bottom: 8px;
+}
+.footer p { margin: 2px 0; }
