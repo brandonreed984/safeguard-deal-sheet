@@ -60,6 +60,16 @@ if (DATABASE_URL) {
       CREATE INDEX IF NOT EXISTS idx_archived ON deals(archived);
     `);
 
+    // Add archived column if it doesn't exist (migration for existing tables)
+    try {
+      await pool.query(`
+        ALTER TABLE deals ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;
+      `);
+      console.log('✅ Deals table migration: archived column added/verified');
+    } catch (err) {
+      console.log('Deals archived column already exists or error:', err.message);
+    }
+
     // Create portfolio_reviews table
     console.log('Creating portfolio_reviews table...');
     await pool.query(`
@@ -78,6 +88,17 @@ if (DATABASE_URL) {
       CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews("investorName");
       CREATE INDEX IF NOT EXISTS idx_portfolio_archived ON portfolio_reviews(archived);
     `);
+
+    // Add archived column if it doesn't exist (migration for existing tables)
+    try {
+      await pool.query(`
+        ALTER TABLE portfolio_reviews ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;
+      `);
+      console.log('✅ Portfolio_reviews table migration: archived column added/verified');
+    } catch (err) {
+      console.log('Portfolio archived column already exists or error:', err.message);
+    }
+
     console.log('✅ portfolio_reviews table ready');
 
     // Export the raw pool for PostgreSQL
