@@ -90,14 +90,20 @@ window.addEventListener('DOMContentLoaded', async () => {
       // Load attached PDFs if they exist
       if (deal.attachedPdf) {
         try {
-          const pdfUrls = JSON.parse(deal.attachedPdf);
-          if (Array.isArray(pdfUrls) && pdfUrls.length > 0) {
-            // Convert to our PDF management format
-            attachedPdfs = pdfUrls.map((dataUrl, idx) => ({
-              name: `Existing PDF ${idx + 1}`,
-              size: Math.round(dataUrl.length * 0.75), // Approximate size from base64
-              dataUrl: dataUrl
-            }));
+          const savedPdfs = JSON.parse(deal.attachedPdf);
+          if (Array.isArray(savedPdfs) && savedPdfs.length > 0) {
+            // Check if new format (with metadata) or old format (just data URLs)
+            if (typeof savedPdfs[0] === 'string') {
+              // Old format - just data URLs
+              attachedPdfs = savedPdfs.map((dataUrl, idx) => ({
+                name: `Existing PDF ${idx + 1}`,
+                size: Math.round(dataUrl.length * 0.75), // Approximate size from base64
+                dataUrl: dataUrl
+              }));
+            } else {
+              // New format - already has metadata
+              attachedPdfs = savedPdfs;
+            }
             renderPdfList();
           }
         } catch (e) {
@@ -363,10 +369,9 @@ async function collectFormData() {
   });
   
   if (attachedPdfs.length > 0) {
-    // Extract just the data URLs
-    const pdfDataUrls = attachedPdfs.map(pdf => pdf.dataUrl);
-    data.attachedPdf = JSON.stringify(pdfDataUrls);
-    console.log(`  ✅ Including ${pdfDataUrls.length} PDF(s)`);
+    // Save the full PDF objects (with names and metadata)
+    data.attachedPdf = JSON.stringify(attachedPdfs);
+    console.log(`  ✅ Including ${attachedPdfs.length} PDF(s) with metadata`);
   } else {
     console.log(`  ℹ️ No PDFs to include`);
   }

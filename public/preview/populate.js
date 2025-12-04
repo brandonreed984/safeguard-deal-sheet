@@ -128,9 +128,11 @@
             const listEl = document.getElementById('attachedPdfsList');
             if (infoDiv && listEl) {
               infoDiv.style.display = 'block';
-              listEl.innerHTML = attachedPdfs.map((pdf, idx) => 
-                `<li>Attached PDF ${idx + 1} (will be merged)</li>`
-              ).join('');
+              listEl.innerHTML = attachedPdfs.map((pdf, idx) => {
+                // Handle both old format (string) and new format (object)
+                const name = typeof pdf === 'object' && pdf.name ? pdf.name : `PDF ${idx + 1}`;
+                return `<li>📄 ${name} (will be merged)</li>`;
+              }).join('');
             }
           }
         } catch (e) {

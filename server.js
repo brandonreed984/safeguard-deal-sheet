@@ -441,7 +441,13 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
           console.log(`📎 Merging ${attachedPdfs.length} attached PDF(s)`);
           
           for (let i = 0; i < attachedPdfs.length; i++) {
-            const pdfDataUrl = attachedPdfs[i];
+            const pdfItem = attachedPdfs[i];
+            
+            // Handle both old format (string) and new format (object with metadata)
+            const pdfDataUrl = typeof pdfItem === 'string' ? pdfItem : pdfItem.dataUrl;
+            const pdfName = typeof pdfItem === 'object' ? pdfItem.name : `PDF ${i + 1}`;
+            
+            console.log(`  Processing: ${pdfName}`);
             
             // Extract base64 data from data URL
             const splitIndex = pdfDataUrl.indexOf(',');
