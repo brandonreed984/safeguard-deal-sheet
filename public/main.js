@@ -73,7 +73,11 @@ window.addEventListener('DOMContentLoaded', async () => {
           const img = document.getElementById(`thumb-${name}`);
           if (img) {
             img.src = imgData;
-            img.style.display = 'inline-block';
+            img.style.display = 'block';
+            img.style.maxWidth = '100%';
+            img.style.maxHeight = '200px';
+            img.style.width = 'auto';
+            img.style.height = 'auto';
           }
         }
       });
