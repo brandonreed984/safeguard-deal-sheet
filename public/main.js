@@ -282,11 +282,18 @@ async function collectFormData() {
   const pdfFiles = fd.getAll('attachedPdfs');
   const pdfDataUrls = [];
   
+  console.log('📎 PDF Collection:', {
+    hasExistingData: !!existingDealData,
+    hasExistingPdfs: !!(existingDealData && existingDealData.attachedPdf),
+    newFilesCount: pdfFiles.length
+  });
+  
   // First, preserve existing PDFs if editing
   if (existingDealData && existingDealData.attachedPdf) {
     try {
       const existingPdfs = JSON.parse(existingDealData.attachedPdf);
       if (Array.isArray(existingPdfs)) {
+        console.log(`  Preserving ${existingPdfs.length} existing PDFs`);
         pdfDataUrls.push(...existingPdfs);
       }
     } catch (e) {
@@ -299,12 +306,18 @@ async function collectFormData() {
     if (pdfFile && pdfFile instanceof File && pdfFile.size) {
       try {
         const url = await fileToDataUrl(pdfFile);
-        if (url) pdfDataUrls.push(url);
+        if (url) {
+          console.log(`  Adding new PDF: ${pdfFile.name}`);
+          pdfDataUrls.push(url);
+        }
       } catch (e) {
         console.warn('Failed to read attached PDF', e);
       }
     }
   }
+  
+  console.log(`  Total PDFs to save: ${pdfDataUrls.length}`);
+  
   // Always include attachedPdf if we have any (existing or new)
   if (pdfDataUrls.length > 0) {
     data.attachedPdf = JSON.stringify(pdfDataUrls);
