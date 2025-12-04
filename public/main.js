@@ -163,17 +163,20 @@ function renderPdfList() {
   if (!listEl) return;
   
   if (attachedPdfs.length === 0) {
-    listEl.innerHTML = '<div style="color:#999;font-size:13px;">No PDFs attached yet</div>';
+    listEl.innerHTML = '<div class="pdf-empty-state">No PDFs attached yet</div>';
     return;
   }
   
   listEl.innerHTML = attachedPdfs.map((pdf, idx) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;margin-bottom:6px;">
-      <div style="flex:1;font-size:13px;color:#333;">
-        <strong>📄 ${pdf.name}</strong>
-        <span style="color:#999;margin-left:8px;">(${(pdf.size / 1024).toFixed(0)} KB)</span>
+    <div class="pdf-item">
+      <div class="pdf-info">
+        <div class="pdf-icon">📄</div>
+        <div class="pdf-details">
+          <div class="pdf-name">${pdf.name}</div>
+          <div class="pdf-size">${(pdf.size / 1024).toFixed(1)} KB</div>
+        </div>
       </div>
-      <button type="button" onclick="removePdf(${idx})" style="padding:4px 12px;background:#dc3545;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">Remove</button>
+      <button type="button" onclick="removePdf(${idx})" class="pdf-remove-btn">Remove</button>
     </div>
   `).join('');
 }
