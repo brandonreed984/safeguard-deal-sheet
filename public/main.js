@@ -282,18 +282,38 @@ async function collectFormData() {
   const pdfFiles = fd.getAll('attachedPdfs');
   const pdfDataUrls = [];
   
+  // Check if new PDFs were uploaded
+  const hasNewPdfs = pdfFiles.some(f => f instanceof File && f.size > 0);
+  
   console.log('📎 PDF Collection:', {
     hasExistingData: !!existingDealData,
     hasExistingPdfs: !!(existingDealData && existingDealData.attachedPdf),
-    newFilesCount: pdfFiles.length
+    newFilesCount: pdfFiles.length,
+    hasNewPdfs: hasNewPdfs
   });
   
-  // First, preserve existing PDFs if editing
-  if (existingDealData && existingDealData.attachedPdf) {
+  if (hasNewPdfs) {
+    // New PDFs uploaded - REPLACE existing ones
+    console.log('  📄 New PDFs uploaded - replacing existing');
+    for (const pdfFile of pdfFiles) {
+      if (pdfFile && pdfFile instanceof File && pdfFile.size) {
+        try {
+          const url = await fileToDataUrl(pdfFile);
+          if (url) {
+            console.log(`  Adding new PDF: ${pdfFile.name}`);
+            pdfDataUrls.push(url);
+          }
+        } catch (e) {
+          console.warn('Failed to read attached PDF', e);
+        }
+      }
+    }
+  } else if (existingDealData && existingDealData.attachedPdf) {
+    // No new PDFs - preserve existing ones
     try {
       const existingPdfs = JSON.parse(existingDealData.attachedPdf);
       if (Array.isArray(existingPdfs)) {
-        console.log(`  Preserving ${existingPdfs.length} existing PDFs`);
+        console.log(`  💾 Preserving ${existingPdfs.length} existing PDFs`);
         pdfDataUrls.push(...existingPdfs);
       }
     } catch (e) {
@@ -301,29 +321,11 @@ async function collectFormData() {
     }
   }
   
-  // Then add any new PDFs uploaded
-  for (const pdfFile of pdfFiles) {
-    if (pdfFile && pdfFile instanceof File && pdfFile.size) {
-      try {
-        const url = await fileToDataUrl(pdfFile);
-        if (url) {
-          console.log(`  Adding new PDF: ${pdfFile.name}`);
-          pdfDataUrls.push(url);
-        }
-      } catch (e) {
-        console.warn('Failed to read attached PDF', e);
-      }
-    }
-  }
+  console.log(`  ✅ Total PDFs to save: ${pdfDataUrls.length}`);
   
-  console.log(`  Total PDFs to save: ${pdfDataUrls.length}`);
-  
-  // Always include attachedPdf if we have any (existing or new)
+  // Include attachedPdf if we have any
   if (pdfDataUrls.length > 0) {
     data.attachedPdf = JSON.stringify(pdfDataUrls);
-  } else if (existingDealData && existingDealData.attachedPdf) {
-    // Preserve existing even if no new ones
-    data.attachedPdf = existingDealData.attachedPdf;
   }
 
   return data;
@@ -375,6 +377,11 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       const reloadedDeal = await reloadRes.json();
       existingDealData = reloadedDeal;
       
+      console.log('📊 Reloaded after save:', {
+        hasPdfs: !!reloadedDeal.attachedPdf,
+        pdfCount: reloadedDeal.attachedPdf ? JSON.parse(reloadedDeal.attachedPdf).length : 0
+      });
+      
       // Update PDF count display
       if (reloadedDeal.attachedPdf) {
         try {
@@ -382,8 +389,12 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
           const display = document.getElementById('pdf-filename-display');
           if (display && Array.isArray(pdfUrls)) {
             display.textContent = `${pdfUrls.length} PDF(s) attached`;
+            display.style.color = 'green';
+            display.style.fontWeight = 'bold';
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error('Failed to update PDF count display:', e);
+        }
       }
     }
     
