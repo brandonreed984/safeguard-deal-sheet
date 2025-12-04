@@ -7,6 +7,7 @@ import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
 import pg from 'pg';
+import session from 'express-session';
 console.log('Imports successful...');
 
 dotenv.config();
@@ -23,8 +24,64 @@ console.log('db loaded for initialization');
 
 const app = express();
 app.use(cors());
-app.use(express.static("public"));
 app.use(express.json({ limit: '50mb' }));
+
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'safeguard-deal-sheet-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Authentication credentials (hardcoded for now)
+const AUTH_USERNAME = process.env.AUTH_USERNAME || 'admin';
+const AUTH_PASSWORD = process.env.AUTH_PASSWORD || 'safeguard2024';
+
+// Authentication middleware
+function requireAuth(req, res, next) {
+  if (req.session && req.session.authenticated) {
+    return next();
+  }
+  res.status(401).json({ error: 'Unauthorized' });
+}
+
+// Serve static files (but login page is always accessible)
+app.use(express.static("public"));
+
+// === Authentication endpoints ===
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+  
+  if (username === AUTH_USERNAME && password === AUTH_PASSWORD) {
+    req.session.authenticated = true;
+    req.session.username = username;
+    res.json({ success: true, message: 'Login successful' });
+  } else {
+    res.status(401).json({ error: 'Invalid username or password' });
+  }
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Logout failed' });
+    }
+    res.json({ success: true, message: 'Logged out successfully' });
+  });
+});
+
+app.get('/api/check-auth', (req, res) => {
+  if (req.session && req.session.authenticated) {
+    res.json({ authenticated: true, username: req.session.username });
+  } else {
+    res.json({ authenticated: false });
+  }
+});
 
 // === Storage setup ===
 const STORAGE_DIR = process.env.STORAGE_DIR || path.join(process.cwd(), "storage");
@@ -33,7 +90,7 @@ if (!fs.existsSync(STORAGE_DIR)) fs.mkdirSync(STORAGE_DIR, { recursive: true });
 const upload = multer({ storage: multer.memoryStorage() });
 
 // === Upload endpoint ===
-app.post("/api/pdfs", upload.single("file"), async (req, res) => {
+app.post("/api/pdfs", requireAuth, upload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: "No file uploaded" });
     let meta = {};
@@ -104,7 +161,7 @@ app.get("/api/pdfs", async (req, res) => {
 });
 
 // === PDF Generation and Merging ===
-app.post("/api/generate-pdf/:id", async (req, res) => {
+app.post("/api/generate-pdf/:id", requireAuth, async (req, res) => {
   try {
     let puppeteer, PDFDocument;
     try {
@@ -488,7 +545,7 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
 });
 
 // === Portfolio PDF Generation ===
-app.post("/api/generate-portfolio-pdf/:id", async (req, res) => {
+app.post("/api/generate-portfolio-pdf/:id", requireAuth, async (req, res) => {
   try {
     let puppeteer, PDFDocument;
     try {
@@ -828,7 +885,7 @@ app.post("/api/generate-portfolio-pdf/:id", async (req, res) => {
 // === Database Endpoints ===
 
 // Create or update a deal
-app.post("/api/deals", async (req, res) => {
+app.post("/api/deals", requireAuth, async (req, res) => {
   try {
     const data = req.body;
     console.log('📝 Creating deal:', data.loanNumber, data.address);
@@ -881,7 +938,7 @@ app.post("/api/deals", async (req, res) => {
 });
 
 // Get all deals (searchable by address)
-app.get("/api/deals", async (req, res) => {
+app.get("/api/deals", requireAuth, async (req, res) => {
   try {
     const search = req.query.search || '';
     let deals;
@@ -915,7 +972,7 @@ app.get("/api/deals", async (req, res) => {
 });
 
 // Get a single deal by ID
-app.get("/api/deals/:id", async (req, res) => {
+app.get("/api/deals/:id", requireAuth, async (req, res) => {
   try {
     let deal;
     
@@ -940,7 +997,7 @@ app.get("/api/deals/:id", async (req, res) => {
 });
 
 // Update a deal
-app.put("/api/deals/:id", async (req, res) => {
+app.put("/api/deals/:id", requireAuth, async (req, res) => {
   try {
     const data = req.body;
     console.log('📝 Updating deal:', req.params.id);
@@ -989,7 +1046,7 @@ app.put("/api/deals/:id", async (req, res) => {
 });
 
 // Delete a deal
-app.delete("/api/deals/:id", async (req, res) => {
+app.delete("/api/deals/:id", requireAuth, async (req, res) => {
   try {
     if (db.isPostgres) {
       // PostgreSQL
@@ -1013,7 +1070,7 @@ app.delete("/api/deals/:id", async (req, res) => {
 // ============================
 
 // Get all portfolios
-app.get("/api/portfolios", async (req, res) => {
+app.get("/api/portfolios", requireAuth, async (req, res) => {
   try {
     const search = req.query.search || '';
     
@@ -1041,7 +1098,7 @@ app.get("/api/portfolios", async (req, res) => {
 });
 
 // Get single portfolio
-app.get("/api/portfolios/:id", async (req, res) => {
+app.get("/api/portfolios/:id", requireAuth, async (req, res) => {
   try {
     if (db.isPostgres) {
       const result = await db.query(
@@ -1067,7 +1124,7 @@ app.get("/api/portfolios/:id", async (req, res) => {
 });
 
 // Create portfolio
-app.post("/api/portfolios", async (req, res) => {
+app.post("/api/portfolios", requireAuth, async (req, res) => {
   try {
     const data = req.body;
     console.log('📊 Creating portfolio:', data.investorName);
@@ -1107,7 +1164,7 @@ app.post("/api/portfolios", async (req, res) => {
 });
 
 // Update portfolio
-app.put("/api/portfolios/:id", async (req, res) => {
+app.put("/api/portfolios/:id", requireAuth, async (req, res) => {
   try {
     const data = req.body;
     
@@ -1140,7 +1197,7 @@ app.put("/api/portfolios/:id", async (req, res) => {
 });
 
 // Delete portfolio
-app.delete("/api/portfolios/:id", async (req, res) => {
+app.delete("/api/portfolios/:id", requireAuth, async (req, res) => {
   try {
     if (db.isPostgres) {
       await db.query('DELETE FROM portfolio_reviews WHERE id = $1', [req.params.id]);

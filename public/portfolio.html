@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Portfolio Reviews - Safeguard</title>
+  <script src="./auth-check.js"></script>
   <!-- Updated: Table layout for better scalability -->
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -113,6 +114,20 @@
     .empty-state h2 {
       margin-bottom: 10px;
     }
+    .btn-secondary {
+      background: #6c757d;
+    }
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+    .btn-danger {
+      background: #dc3545;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-danger:hover {
+      background: #c82333;
+    }
   </style>
 </head>
 <body>
@@ -121,6 +136,8 @@
     <div class="search-bar">
       <input type="text" id="searchInput" placeholder="Search by investor name..." />
       <a href="/portfolio-form.html" class="btn btn-primary">+ New Portfolio Review</a>
+      <a href="/" class="btn btn-secondary">Deal Sheets</a>
+      <button id="logoutBtn" class="btn btn-danger">Logout</button>
     </div>
   </div>
 
@@ -258,6 +275,21 @@
 
     // Initial load
     loadPortfolios();
+
+    // Logout functionality
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/logout', { method: 'POST' });
+        if (response.ok) {
+          window.location.href = '/login.html';
+        } else {
+          alert('Logout failed. Please try again.');
+        }
+      } catch (err) {
+        console.error('Logout error:', err);
+        alert('An error occurred during logout.');
+      }
+    });
   </script>
 </body>
 </html>

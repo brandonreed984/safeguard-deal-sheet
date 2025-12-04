@@ -5,10 +5,15 @@
   <title>Safeguard Deal Sheet</title>
   <link rel="stylesheet" href="./styles.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="./auth-check.js"></script>
 </head>
 <body>
   <div class="toolbar">
     <h2 class="form-title">Deal Sheet Generator</h2>
+    <div class="nav-buttons">
+      <a href="/portfolio.html" class="nav-link">Portfolio Reviews</a>
+      <button id="logoutBtn" class="btn-logout">Logout</button>
+    </div>
 
     <form id="dealForm" class="form-card" autocomplete="off">
       <!-- Loan Summary -->

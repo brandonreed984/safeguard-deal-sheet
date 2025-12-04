@@ -561,3 +561,21 @@ document.getElementById('pdfBtn').addEventListener('click', async () => {
     setStatus('Failed to prepare PDF: ' + (err.message || err), true);
   }
 });
+
+// Logout functionality
+const logoutBtn = document.getElementById('logoutBtn');
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
+    try {
+      const response = await fetch('/api/logout', { method: 'POST' });
+      if (response.ok) {
+        window.location.href = '/login.html';
+      } else {
+        alert('Logout failed. Please try again.');
+      }
+    } catch (err) {
+      console.error('Logout error:', err);
+      alert('An error occurred during logout.');
+    }
+  });
+}
