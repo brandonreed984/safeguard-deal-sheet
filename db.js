@@ -50,19 +50,13 @@ if (DATABASE_URL) {
         "int4Image" TEXT,
         "attachedPdf" TEXT,
         "pdfPath" TEXT,
-        archived BOOLEAN DEFAULT FALSE,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_address ON deals(address);
-      CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals("loanNumber");
-      CREATE INDEX IF NOT EXISTS idx_archived ON deals(archived);
+      )
     `);
 
     // Add archived column if it doesn't exist (migration for existing tables)
     try {
-      // Check if column exists first
       const checkCol = await pool.query(`
         SELECT column_name 
         FROM information_schema.columns 
@@ -79,6 +73,13 @@ if (DATABASE_URL) {
       console.log('Deals archived column migration skipped:', err.message);
     }
 
+    // Create indexes after column migration
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_address ON deals(address);
+      CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals("loanNumber");
+      CREATE INDEX IF NOT EXISTS idx_archived ON deals(archived);
+    `);
+
     // Create portfolio_reviews table
     console.log('Creating portfolio_reviews table...');
     await pool.query(`
@@ -89,18 +90,13 @@ if (DATABASE_URL) {
         "currentInvestmentTotal" DECIMAL(15,2),
         "lifetimeInvestmentTotal" DECIMAL(15,2),
         "lifetimeInterestPaid" DECIMAL(15,2),
-        archived BOOLEAN DEFAULT FALSE,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      
-      CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews("investorName");
-      CREATE INDEX IF NOT EXISTS idx_portfolio_archived ON portfolio_reviews(archived);
+      )
     `);
 
     // Add archived column if it doesn't exist (migration for existing tables)
     try {
-      // Check if column exists first
       const checkCol = await pool.query(`
         SELECT column_name 
         FROM information_schema.columns 
@@ -116,6 +112,12 @@ if (DATABASE_URL) {
     } catch (err) {
       console.log('Portfolio archived column migration skipped:', err.message);
     }
+
+    // Create indexes after column migration
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews("investorName");
+      CREATE INDEX IF NOT EXISTS idx_portfolio_archived ON portfolio_reviews(archived);
+    `);
 
     console.log('✅ portfolio_reviews table ready');
 
