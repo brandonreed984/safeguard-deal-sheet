@@ -337,6 +337,32 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       currentDealId = result.id;
     }
     
+    // Clear PDF input after save
+    const pdfInput = document.querySelector('input[name="attachedPdfs"]');
+    if (pdfInput) {
+      pdfInput.value = '';
+      const pdfFilenames = document.getElementById('pdf-upload-filenames');
+      if (pdfFilenames) pdfFilenames.innerHTML = '';
+    }
+    
+    // Reload the deal data to show saved PDFs
+    if (currentDealId) {
+      const reloadRes = await fetch(`/api/deals/${currentDealId}`);
+      const reloadedDeal = await reloadRes.json();
+      existingDealData = reloadedDeal;
+      
+      // Update PDF count display
+      if (reloadedDeal.attachedPdf) {
+        try {
+          const pdfUrls = JSON.parse(reloadedDeal.attachedPdf);
+          const display = document.getElementById('pdf-filename-display');
+          if (display && Array.isArray(pdfUrls)) {
+            display.textContent = `${pdfUrls.length} PDF(s) attached`;
+          }
+        } catch (e) {}
+      }
+    }
+    
     setStatus('Deal saved successfully!');
     setTimeout(() => {
       window.location.href = '/';
@@ -350,14 +376,50 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
 document.getElementById('previewBtn').addEventListener('click', async () => {
   setStatus('Preparing preview...');
   try {
-    const data = await collectFormData();
-    sessionStorage.setItem('safeguard_preview', JSON.stringify(data));
-
-    // Open the preview template (must exist at /preview/index.html)
-    const win = window.open('/preview/index.html', '_blank');
-    if (!win) {
-      setStatus('Popup blocked — please allow popups for this site', true);
-      return;
+    // Save first if editing, so preview has latest data
+    if (currentDealId) {
+      setStatus('Saving changes before preview...');
+      const data = await collectFormData();
+      const res = await fetch(`/api/deals/${currentDealId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) {
+        throw new Error('Failed to save before preview');
+      }
+      // Open preview with deal ID
+      const win = window.open(`/preview/index.html?dealId=${currentDealId}`, '_blank');
+      if (!win) {
+        setStatus('Popup blocked — please allow popups for this site', true);
+        return;
+      }
+    } else {
+      // New deal - try to use sessionStorage with smaller data (no images)
+      const data = await collectFormData();
+      const previewData = {
+        loanNumber: data.loanNumber,
+        amount: data.amount,
+        rateType: data.rateType,
+        term: data.term,
+        monthlyReturn: data.monthlyReturn,
+        ltv: data.ltv,
+        address: data.address,
+        appraisal: data.appraisal,
+        rent: data.rent,
+        sqft: data.sqft,
+        bedsBaths: data.bedsBaths,
+        marketLocation: data.marketLocation,
+        marketOverview: data.marketOverview,
+        dealInformation: data.dealInformation
+        // Skip images to save space
+      };
+      sessionStorage.setItem('safeguard_preview', JSON.stringify(previewData));
+      const win = window.open('/preview/index.html', '_blank');
+      if (!win) {
+        setStatus('Popup blocked — please allow popups for this site', true);
+        return;
+      }
     }
     setStatus('Preview opened in a new window.');
   } catch (err) {

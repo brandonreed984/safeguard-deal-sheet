@@ -29,14 +29,28 @@
     });
   }
 
-  function run() {
+  async function run() {
     try {
-      const raw = sessionStorage.getItem('safeguard_preview');
-      if (!raw) {
-        console.warn('No preview data found in sessionStorage (key: safeguard_preview).');
-        return;
+      // Check if dealId is in URL - if so, fetch from API
+      const params = new URLSearchParams(window.location.search);
+      const dealId = params.get('dealId');
+      
+      let data;
+      if (dealId) {
+        // Load from API
+        const res = await fetch(`/api/deals/${dealId}`);
+        if (!res.ok) throw new Error('Failed to load deal');
+        data = await res.json();
+      } else {
+        // Load from sessionStorage (for new unsaved deals)
+        const raw = sessionStorage.getItem('safeguard_preview');
+        if (!raw) {
+          console.warn('No preview data found in sessionStorage (key: safeguard_preview).');
+          return;
+        }
+        data = JSON.parse(raw);
       }
-      const data = JSON.parse(raw);
+      
       // expose parsed data for other scripts (and for auto-generation)
       window.__safeguard_preview_data = data;
 
