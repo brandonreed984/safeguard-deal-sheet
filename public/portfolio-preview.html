@@ -192,7 +192,7 @@
   <div id="status">Loading portfolio...</div>
   
   <div class="controls">
-    <a href="javascript:history.back()" class="btn btn-back">← Back to Edit</a>
+    <button id="backBtn" class="btn btn-back">← Back to Edit</button>
     <button id="generateBtn" class="btn btn-generate">Generate & Download PDF</button>
   </div>
 
@@ -335,36 +335,70 @@
       }
     }
     
+    // Back button
+    document.getElementById('backBtn').addEventListener('click', () => {
+      window.location.href = `/portfolio-form.html?id=${portfolioId}`;
+    });
+    
     // Generate PDF button
     document.getElementById('generateBtn').addEventListener('click', async () => {
       setStatus('Generating PDF...');
+      console.log('Requesting PDF for portfolio:', portfolioId);
+      
       try {
         const res = await fetch(`/api/generate-portfolio-pdf/${portfolioId}`, { method: 'POST' });
+        console.log('Response received:', res.status, res.statusText);
+        console.log('Content-Type:', res.headers.get('content-type'));
+        
         if (!res.ok) {
           const errorText = await res.text();
+          console.error('Server error response:', errorText);
           throw new Error(errorText || 'Failed to generate PDF');
         }
         
         const blob = await res.blob();
-        if (blob.size === 0) throw new Error('PDF is empty');
+        console.log('Blob details:', {
+          type: blob.type,
+          size: blob.size,
+          sizeKB: (blob.size / 1024).toFixed(2) + ' KB'
+        });
         
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
+        if (blob.size === 0) {
+          throw new Error('PDF is empty (0 bytes)');
+        }
+        
+        if (blob.type && !blob.type.includes('pdf')) {
+          console.warn('Warning: blob type is', blob.type, 'not application/pdf');
+        }
+        
+        // Create download link
         const investorName = document.querySelector('.investor-name').textContent;
-        a.download = `Portfolio-Review-${investorName.replace(/\\s+/g, '-')}.pdf`;
+        const filename = `Portfolio-Review-${investorName.replace(/\s+/g, '-')}.pdf`;
+        console.log('Creating download for:', filename);
+        
+        // Use object URL for download
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        
         document.body.appendChild(a);
+        console.log('Triggering download...');
         a.click();
         
+        // Cleanup after a short delay
         setTimeout(() => {
-          window.URL.revokeObjectURL(url);
+          URL.revokeObjectURL(url);
           document.body.removeChild(a);
-        }, 100);
+          console.log('Download initiated, cleanup complete');
+        }, 500);
         
         setStatus('✅ PDF downloaded!');
         setTimeout(() => setStatus('Preview ready'), 2000);
       } catch (err) {
         console.error('PDF generation error:', err);
+        console.error('Error stack:', err.stack);
         alert('Failed to generate PDF: ' + err.message);
         setStatus('Failed to generate PDF: ' + err.message, true);
       }
