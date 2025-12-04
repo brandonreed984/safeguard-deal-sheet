@@ -788,6 +788,17 @@ app.post("/api/generate-portfolio-pdf/:id", async (req, res) => {
     
   } catch (err) {
     console.error('Portfolio PDF generation error:', err);
+    console.error('Stack trace:', err.stack);
+    
+    // Make sure browser is closed on error
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error('Error closing browser:', closeErr);
+      }
+    }
+    
     res.status(500).json({ error: err.message });
   }
 });

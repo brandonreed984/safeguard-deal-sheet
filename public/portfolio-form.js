@@ -308,7 +308,34 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   }
 });
 
-// Generate PDF
+// Preview PDF
+document.getElementById('previewBtn').addEventListener('click', async () => {
+  if (!currentPortfolioId) {
+    alert('Please save the portfolio first');
+    return;
+  }
+  
+  setStatus('Opening PDF preview...');
+  try {
+    const res = await fetch(`/api/generate-portfolio-pdf/${currentPortfolioId}`, { method: 'POST' });
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText || 'Failed to generate PDF');
+    }
+    
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    
+    setStatus('✅ PDF preview opened!');
+    setTimeout(() => setStatus('Ready.'), 2000);
+  } catch (err) {
+    console.error('PDF preview error:', err);
+    setStatus('Failed to preview PDF: ' + err.message, true);
+  }
+});
+
+// Generate & Download PDF
 document.getElementById('pdfBtn').addEventListener('click', async () => {
   if (!currentPortfolioId) {
     alert('Please save the portfolio first');
@@ -319,11 +346,17 @@ document.getElementById('pdfBtn').addEventListener('click', async () => {
   try {
     const res = await fetch(`/api/generate-portfolio-pdf/${currentPortfolioId}`, { method: 'POST' });
     if (!res.ok) {
-      const errorData = await res.json();
-      throw new Error(errorData.error || 'Failed to generate PDF');
+      const errorText = await res.text();
+      throw new Error(errorText || 'Failed to generate PDF');
     }
     
     const blob = await res.blob();
+    
+    // Check if blob is valid
+    if (blob.size === 0) {
+      throw new Error('Generated PDF is empty');
+    }
+    
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -334,9 +367,10 @@ document.getElementById('pdfBtn').addEventListener('click', async () => {
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
     
-    setStatus('✅ PDF generated!');
+    setStatus('✅ PDF downloaded!');
     setTimeout(() => setStatus('Ready.'), 2000);
   } catch (err) {
+    console.error('PDF generation error:', err);
     setStatus('Failed to generate PDF: ' + err.message, true);
   }
 });
