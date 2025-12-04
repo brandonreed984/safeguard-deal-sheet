@@ -141,15 +141,7 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
       return res.status(404).json({ error: 'Deal not found' });
     }
     
-    // Debug logging
-    console.log('🎨 PDF Generation for deal:', deal.id);
-    console.log('  - Has heroImage:', !!deal.heroImage);
-    console.log('  - Has int1Image:', !!deal.int1Image);
-    console.log('  - Has attachedPdf:', !!deal.attachedPdf);
-    if (deal.heroImage) {
-      console.log('  - heroImage length:', deal.heroImage.length);
-      console.log('  - heroImage starts with:', deal.heroImage.substring(0, 50));
-    }
+    console.log('🎨 Generating PDF for deal:', deal.id);
     
     // Launch headless browser with Railway-compatible options
     let browser;
@@ -443,61 +435,37 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
     // Merge attached PDFs if any
     if (deal.attachedPdf) {
       try {
-        console.log('📎 Attached PDF data exists, length:', deal.attachedPdf.length);
-        console.log('📎 First 100 chars:', deal.attachedPdf.substring(0, 100));
-        
         const attachedPdfs = JSON.parse(deal.attachedPdf);
-        console.log('📎 Parsed attached PDFs array, count:', attachedPdfs.length);
-        console.log('📎 Array check:', Array.isArray(attachedPdfs));
         
         if (Array.isArray(attachedPdfs) && attachedPdfs.length > 0) {
+          console.log(`📎 Merging ${attachedPdfs.length} attached PDF(s)`);
+          
           for (let i = 0; i < attachedPdfs.length; i++) {
             const pdfDataUrl = attachedPdfs[i];
-            console.log(`📎 Processing attached PDF ${i + 1}/${attachedPdfs.length}`);
-            console.log(`📎 Data URL starts with:`, pdfDataUrl.substring(0, 50));
             
             // Extract base64 data from data URL
             const splitIndex = pdfDataUrl.indexOf(',');
-            console.log(`📎 Split index:`, splitIndex);
-            
             if (splitIndex === -1) {
-              console.error(`❌ PDF ${i + 1} has invalid data URL format (no comma found)`);
-              throw new Error('Failed to merge attached PDF. Only the main PDF will be uploaded.');
+              throw new Error('Invalid PDF data URL format');
             }
             
             const base64Data = pdfDataUrl.substring(splitIndex + 1);
-            console.log(`📎 Base64 data length:`, base64Data.length);
-            console.log(`📎 Base64 first 50 chars:`, base64Data.substring(0, 50));
-            
             if (!base64Data || base64Data.length === 0) {
-              console.error(`❌ PDF ${i + 1} has no base64 data`);
-              throw new Error('Failed to merge attached PDF. Only the main PDF will be uploaded.');
+              throw new Error('Empty PDF data');
             }
             
-            console.log(`📎 Creating buffer from base64...`);
             const pdfBytes = Buffer.from(base64Data, 'base64');
-            console.log(`📎 Buffer created, size:`, pdfBytes.length, 'bytes');
-            
-            console.log(`📎 Loading PDF document...`);
             const attachedDoc = await PDFDocument.load(pdfBytes);
-            console.log(`📎 PDF loaded successfully, pages:`, attachedDoc.getPageCount());
-            
-            console.log(`📎 Copying pages to merged document...`);
             const attachedPages = await pdfDoc.copyPages(attachedDoc, attachedDoc.getPageIndices());
             attachedPages.forEach(page => pdfDoc.addPage(page));
-            console.log(`✅ Successfully merged PDF ${i + 1} (${attachedPages.length} pages)`);
           }
-        } else {
-          console.log('⚠️ No PDFs to merge or not an array');
+          
+          console.log(`✅ Successfully merged all attached PDFs`);
         }
       } catch (e) {
         console.error('❌ Error merging attached PDFs:', e.message);
-        console.error('❌ Error name:', e.name);
-        console.error('❌ Stack:', e.stack);
-        throw e; // Re-throw to be caught by outer try-catch
+        throw e;
       }
-    } else {
-      console.log('ℹ️ No attached PDFs in deal data');
     }
     
     // Save the merged PDF
@@ -520,16 +488,6 @@ app.post("/api/deals", async (req, res) => {
   try {
     const data = req.body;
     console.log('📝 Creating deal:', data.loanNumber, data.address);
-    console.log('  - Has images:', !!(data.hero || data.int1 || data.int2 || data.int3 || data.int4));
-    console.log('  - Has PDFs:', !!data.attachedPdf);
-    if (data.attachedPdf) {
-      try {
-        const pdfs = JSON.parse(data.attachedPdf);
-        console.log('  - PDF count:', pdfs.length);
-      } catch(e) {
-        console.log('  - PDF parse error:', e.message);
-      }
-    }
     
     if (db.isPostgres) {
       // PostgreSQL
@@ -642,16 +600,6 @@ app.put("/api/deals/:id", async (req, res) => {
   try {
     const data = req.body;
     console.log('📝 Updating deal:', req.params.id);
-    console.log('  - Has images:', !!(data.hero || data.int1 || data.int2 || data.int3 || data.int4));
-    console.log('  - Has PDFs:', !!data.attachedPdf);
-    if (data.attachedPdf) {
-      try {
-        const pdfs = JSON.parse(data.attachedPdf);
-        console.log('  - PDF count:', pdfs.length);
-      } catch(e) {
-        console.log('  - PDF parse error:', e.message);
-      }
-    }
     
     if (db.isPostgres) {
       // PostgreSQL
