@@ -287,15 +287,24 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     const method = currentPortfolioId ? 'PUT' : 'POST';
     const url = currentPortfolioId ? `/api/portfolios/${currentPortfolioId}` : '/api/portfolios';
     
+    console.log('Saving portfolio:', data);
+    
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
     
-    if (!res.ok) throw new Error('Failed to save portfolio');
+    console.log('Response status:', res.status);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('Server error:', errorText);
+      throw new Error('Failed to save portfolio: ' + errorText);
+    }
     
     const result = await res.json();
+    console.log('Save result:', result);
     if (!currentPortfolioId) {
       currentPortfolioId = result.id;
       window.history.replaceState({}, '', `?id=${result.id}`);
