@@ -71,6 +71,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       document.querySelector('textarea[name="marketOverview"]').value = deal.marketOverview || '';
       document.querySelector('textarea[name="dealInformation"]').value = deal.dealInformation || '';
       document.querySelector('input[name="clientName"]').value = deal.clientName || '';
+      document.querySelector('input[name="clientAddress"]').value = deal.clientAddress || '';
       document.querySelector('input[name="lendingEntity"]').value = deal.lendingEntity || '';
       
       // Load images as thumbnails if they exist
@@ -577,10 +578,11 @@ if (engagementBtn) {
     }
     
     const clientName = document.querySelector('input[name="clientName"]').value;
+    const clientAddress = document.querySelector('input[name="clientAddress"]').value;
     const lendingEntity = document.querySelector('input[name="lendingEntity"]').value;
     
-    if (!clientName || !lendingEntity) {
-      alert('Please fill in Client Name and Lending Entity fields before generating the engagement agreement.');
+    if (!clientName || !clientAddress || !lendingEntity) {
+      alert('Please fill in Client Name, Client Address, and Lending Entity fields before generating the engagement agreement.');
       return;
     }
     
