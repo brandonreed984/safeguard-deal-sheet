@@ -105,7 +105,16 @@ body {
   border-color: #1E66B4;
   background: #f0f8ff;
 }
-.thumb { display: none; border-radius: 6px; border: 1px solid #e1e1e1; }
+.thumb { 
+  display: block; 
+  max-width: 100%; 
+  max-height: 200px; 
+  width: auto; 
+  height: auto; 
+  border-radius: 6px; 
+  border: 1px solid #e1e1e1; 
+  object-fit: contain;
+}
 
 .form-section .span-2 {
   grid-column: 1 / -1;
