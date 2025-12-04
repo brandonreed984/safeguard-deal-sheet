@@ -574,11 +574,11 @@ app.post("/api/generate-portfolio-pdf/:id", async (req, res) => {
     
     // Generate loan rows HTML
     const generateLoanRows = (loanList) => loanList.map(loan => `
-      <tr style="border-bottom:1px solid #e0e0e0;">
-        <td style="padding:10px;">${loan.address}</td>
-        <td style="padding:10px;text-align:right;">${fmt(loan.balance)}</td>
-        <td style="padding:10px;text-align:right;">${fmt(loan.interestPaid)}</td>
-        <td style="padding:10px;text-align:center;">${loan.status}</td>
+      <tr>
+        <td>${loan.address}</td>
+        <td class="right">${fmt(loan.balance)}</td>
+        <td class="right">${fmt(loan.interestPaid)}</td>
+        <td class="center">${loan.status}</td>
       </tr>
     `).join('');
     
@@ -671,7 +671,15 @@ app.post("/api/generate-portfolio-pdf/:id", async (req, res) => {
     th.right { text-align: right; }
     th.center { text-align: center; }
     td {
+      padding: 10px;
+      border-bottom: 1px solid #e0e0e0;
       font-size: 10pt;
+    }
+    td.right {
+      text-align: right;
+    }
+    td.center {
+      text-align: center;
     }
     .section-total {
       background: #f0f7ff;
@@ -728,9 +736,9 @@ app.post("/api/generate-portfolio-pdf/:id", async (req, res) => {
       <tbody>
         ${generateLoanRows(currentLoans)}
         <tr class="section-total">
-          <td style="padding:12px;"><strong>Current Investment Total</strong></td>
-          <td style="padding:12px;text-align:right;"><strong>${fmt(currentTotal)}</strong></td>
-          <td style="padding:12px;text-align:right;"><strong>${fmt(currentInterest)}</strong></td>
+          <td><strong>Current Investment Total</strong></td>
+          <td class="right"><strong>${fmt(currentTotal)}</strong></td>
+          <td class="right"><strong>${fmt(currentInterest)}</strong></td>
           <td></td>
         </tr>
       </tbody>
@@ -753,9 +761,9 @@ app.post("/api/generate-portfolio-pdf/:id", async (req, res) => {
       <tbody>
         ${generateLoanRows(paidOffLoans)}
         <tr class="section-total">
-          <td style="padding:12px;"><strong>Paid Off Total</strong></td>
-          <td style="padding:12px;text-align:right;"><strong>${fmt(paidOffTotal)}</strong></td>
-          <td style="padding:12px;text-align:right;"><strong>${fmt(paidOffInterest)}</strong></td>
+          <td><strong>Paid Off Total</strong></td>
+          <td class="right"><strong>${fmt(paidOffTotal)}</strong></td>
+          <td class="right"><strong>${fmt(paidOffInterest)}</strong></td>
           <td></td>
         </tr>
       </tbody>
