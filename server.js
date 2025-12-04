@@ -89,22 +89,22 @@ app.post("/api/deals", async (req, res) => {
     if (db.pool) {
       // PostgreSQL
       console.log('Using PostgreSQL');
-      const query = {
-        text: `INSERT INTO deals (
-          "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
-          address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
-          "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
-          "int3Image", "int4Image", "attachedPdf"
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-        RETURNING id`,
-        values: [
-          data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
-          data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
-          data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-          data.int3, data.int4, data.attachedPdf
-        ]
-      };
-      const result = await db.pool.query(query);
+      const queryText = `INSERT INTO deals (
+        "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
+        address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
+        "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
+        "int3Image", "int4Image", "attachedPdf"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      RETURNING id`;
+      
+      const queryValues = [
+        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
+        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
+        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
+        data.int3, data.int4, data.attachedPdf
+      ];
+      
+      const result = await db.pool.query(queryText, queryValues);
       console.log('✅ Deal created with ID:', result.rows[0].id);
       res.json({ ok: true, id: result.rows[0].id });
     } else {
@@ -141,10 +141,10 @@ app.get("/api/deals", async (req, res) => {
     if (db.pool) {
       // PostgreSQL
       if (search) {
-        const result = await db.pool.query({
-          text: 'SELECT * FROM deals WHERE address ILIKE $1 OR "loanNumber" ILIKE $2 ORDER BY "updatedAt" DESC',
-          values: [`%${search}%`, `%${search}%`]
-        });
+        const result = await db.pool.query(
+          'SELECT * FROM deals WHERE address ILIKE $1 OR "loanNumber" ILIKE $2 ORDER BY "updatedAt" DESC',
+          [`%${search}%`, `%${search}%`]
+        );
         deals = result.rows;
       } else {
         const result = await db.pool.query('SELECT * FROM deals ORDER BY "updatedAt" DESC');
@@ -173,10 +173,10 @@ app.get("/api/deals/:id", async (req, res) => {
     
     if (db.pool) {
       // PostgreSQL
-      const result = await db.pool.query({
-        text: 'SELECT * FROM deals WHERE id = $1',
-        values: [req.params.id]
-      });
+      const result = await db.pool.query(
+        'SELECT * FROM deals WHERE id = $1',
+        [req.params.id]
+      );
       deal = result.rows[0];
     } else {
       // SQLite
@@ -198,21 +198,21 @@ app.put("/api/deals/:id", async (req, res) => {
     
     if (db.pool) {
       // PostgreSQL
-      await db.pool.query({
-        text: `UPDATE deals SET
+      await db.pool.query(
+        `UPDATE deals SET
           "loanNumber"=$2, amount=$3, "rateType"=$4, term=$5, "monthlyReturn"=$6, ltv=$7,
           address=$8, appraisal=$9, rent=$10, sqft=$11, "bedsBaths"=$12, "marketLocation"=$13,
           "marketOverview"=$14, "dealInformation"=$15, "heroImage"=$16, "int1Image"=$17, "int2Image"=$18,
           "int3Image"=$19, "int4Image"=$20, "attachedPdf"=$21, "updatedAt"=CURRENT_TIMESTAMP
         WHERE id = $1`,
-        values: [
+        [
           req.params.id,
           data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
           data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
           data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
           data.int3, data.int4, data.attachedPdf
         ]
-      });
+      );
     } else {
       // SQLite
       const stmt = db.prepare(`
@@ -243,10 +243,10 @@ app.delete("/api/deals/:id", async (req, res) => {
   try {
     if (db.pool) {
       // PostgreSQL
-      await db.pool.query({
-        text: 'DELETE FROM deals WHERE id = $1',
-        values: [req.params.id]
-      });
+      await db.pool.query(
+        'DELETE FROM deals WHERE id = $1',
+        [req.params.id]
+      );
     } else {
       // SQLite
       db.prepare('DELETE FROM deals WHERE id = ?').run(req.params.id);
