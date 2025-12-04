@@ -6,8 +6,7 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import dotenv from "dotenv";
-import pkg from 'pg';
-const { Pool } = pkg;
+import pg from 'pg';
 console.log('Imports successful...');
 
 dotenv.config();
@@ -19,7 +18,7 @@ console.log('PORT:', process.env.PORT || 5000);
 // Create a fresh PostgreSQL pool if DATABASE_URL exists
 let pgPool = null;
 if (process.env.DATABASE_URL) {
-  pgPool = new Pool({
+  pgPool = new pg.Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
   });
