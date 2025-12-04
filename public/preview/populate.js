@@ -76,7 +76,8 @@
         ['int4', '.grid .photo.slot:nth-child(4)']
       ];
       photoMap.forEach(([key, selector]) => {
-        const url = data[key];
+        // Check both key and keyImage (database format)
+        const url = data[key] || data[key + 'Image'];
         if (!url) return;
         const el = document.querySelector(selector);
         if (!el) return;

@@ -82,6 +82,19 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
       });
       
+      // Display attached PDF filenames if they exist
+      if (deal.attachedPdf) {
+        try {
+          const pdfUrls = JSON.parse(deal.attachedPdf);
+          const display = document.getElementById('pdf-filename-display');
+          if (display && Array.isArray(pdfUrls) && pdfUrls.length > 0) {
+            display.textContent = `${pdfUrls.length} PDF(s) attached`;
+          }
+        } catch (e) {
+          console.warn('Error parsing attached PDFs', e);
+        }
+      }
+      
       setStatus(`Editing deal #${deal.loanNumber}`);
     } catch (err) {
       setStatus('Failed to load deal: ' + err.message, true);
@@ -250,7 +263,9 @@ async function collectFormData() {
     if (file && file instanceof File && file.size) {
       try {
         const url = await fileToDataUrl(file);
-        if (url) data[name] = url;
+        if (url) {
+          data[name] = url; // For preview compatibility
+        }
       } catch (e) {
         console.warn('Failed to read file for', name, e);
       }

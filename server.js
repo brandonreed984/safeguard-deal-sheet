@@ -120,46 +120,160 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
     
     const page = await browser.newPage();
     
-    // Build HTML for the deal sheet
+    // Build HTML for the deal sheet with proper styling
     const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h1 { color: #1E66B4; }
-    .deal-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0; }
-    .deal-info div { padding: 10px; background: #f5f5f5; border-radius: 5px; }
-    .deal-info label { font-weight: bold; display: block; margin-bottom: 5px; }
-    .images { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0; }
-    .images img { width: 100%; height: auto; border-radius: 5px; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { 
+      font-family: Arial, Helvetica, sans-serif; 
+      padding: 48px;
+      background: white;
+      color: #141414;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #1E66B4;
+    }
+    h1 { 
+      color: #1E66B4; 
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    .tagline {
+      color: #3C3C3C;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .section {
+      margin: 25px 0;
+      page-break-inside: avoid;
+    }
+    .section-title {
+      color: #1E66B4;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #D2D2D2;
+    }
+    .info-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 12px;
+      margin: 15px 0;
+    }
+    .info-item { 
+      padding: 12px; 
+      background: #F2F5F8; 
+      border-radius: 8px;
+      border: 1px solid #D2D2D2;
+    }
+    .info-label { 
+      font-weight: 700; 
+      color: #3C3C3C;
+      font-size: 11px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .info-value {
+      font-size: 14px;
+      color: #141414;
+    }
+    .text-content {
+      padding: 15px;
+      background: #F2F5F8;
+      border-radius: 8px;
+      border: 1px solid #D2D2D2;
+      line-height: 1.6;
+      font-size: 13px;
+    }
+    .images { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 15px; 
+      margin: 20px 0;
+    }
+    .image-hero {
+      grid-column: 1 / -1;
+      width: 100%;
+      max-height: 400px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 2px solid #D2D2D2;
+    }
+    .images img { 
+      width: 100%; 
+      height: 250px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 2px solid #D2D2D2;
+    }
   </style>
 </head>
 <body>
-  <h1>Deal Sheet - ${deal.loanNumber || 'N/A'}</h1>
-  <div class="deal-info">
-    <div><label>Address:</label> ${deal.address || ''}</div>
-    <div><label>Amount:</label> ${deal.amount || ''}</div>
-    <div><label>Rate Type:</label> ${deal.rateType || ''}</div>
-    <div><label>Term:</label> ${deal.term || ''}</div>
-    <div><label>Monthly Return:</label> ${deal.monthlyReturn || ''}</div>
-    <div><label>LTV:</label> ${deal.ltv || ''}</div>
-    <div><label>Appraisal:</label> ${deal.appraisal || ''}</div>
-    <div><label>Rent:</label> ${deal.rent || ''}</div>
-    <div><label>Sq Ft:</label> ${deal.sqft || ''}</div>
-    <div><label>Beds/Baths:</label> ${deal.bedsBaths || ''}</div>
+  <div class="header">
+    <h1>Deal Sheet</h1>
+    <div class="tagline">Private Lending Secured by Real Estate</div>
   </div>
-  ${deal.marketLocation ? `<div><h3>Market Location</h3><p>${deal.marketLocation}</p></div>` : ''}
-  ${deal.marketOverview ? `<div><h3>Market Overview</h3><p>${deal.marketOverview}</p></div>` : ''}
-  ${deal.dealInformation ? `<div><h3>Deal Information</h3><p>${deal.dealInformation}</p></div>` : ''}
-  <div class="images">
-    ${deal.heroImage ? `<img src="${deal.heroImage}" alt="Hero" />` : ''}
-    ${deal.int1Image ? `<img src="${deal.int1Image}" alt="Interior 1" />` : ''}
-    ${deal.int2Image ? `<img src="${deal.int2Image}" alt="Interior 2" />` : ''}
-    ${deal.int3Image ? `<img src="${deal.int3Image}" alt="Interior 3" />` : ''}
-    ${deal.int4Image ? `<img src="${deal.int4Image}" alt="Interior 4" />` : ''}
+
+  <div class="section">
+    <div class="section-title">LOAN SUMMARY</div>
+    <div class="info-grid">
+      <div class="info-item"><div class="info-label">Loan #</div><div class="info-value">${deal.loanNumber || 'N/A'}</div></div>
+      <div class="info-item"><div class="info-label">Amount</div><div class="info-value">${deal.amount || ''}</div></div>
+      <div class="info-item"><div class="info-label">Rate / Type</div><div class="info-value">${deal.rateType || ''}</div></div>
+      <div class="info-item"><div class="info-label">Term</div><div class="info-value">${deal.term || ''}</div></div>
+      <div class="info-item"><div class="info-label">Monthly Return</div><div class="info-value">${deal.monthlyReturn || ''}</div></div>
+      <div class="info-item"><div class="info-label">LTV</div><div class="info-value">${deal.ltv || ''}</div></div>
+    </div>
   </div>
+
+  <div class="section">
+    <div class="section-title">PROPERTY DETAILS</div>
+    <div class="info-grid">
+      <div class="info-item"><div class="info-label">Address</div><div class="info-value">${deal.address || ''}</div></div>
+      <div class="info-item"><div class="info-label">Appraisal</div><div class="info-value">${deal.appraisal || ''}</div></div>
+      <div class="info-item"><div class="info-label">Rent</div><div class="info-value">${deal.rent || ''}</div></div>
+      <div class="info-item"><div class="info-label">Square Footage</div><div class="info-value">${deal.sqft || ''}</div></div>
+      <div class="info-item"><div class="info-label">Beds / Baths</div><div class="info-value">${deal.bedsBaths || ''}</div></div>
+    </div>
+  </div>
+
+  ${deal.marketLocation ? `
+  <div class="section">
+    <div class="section-title">MARKET LOCATION</div>
+    <div class="text-content">${deal.marketLocation}</div>
+  </div>` : ''}
+
+  ${deal.marketOverview ? `
+  <div class="section">
+    <div class="section-title">MARKET OVERVIEW</div>
+    <div class="text-content">${deal.marketOverview}</div>
+  </div>` : ''}
+
+  ${deal.dealInformation ? `
+  <div class="section">
+    <div class="section-title">DEAL INFORMATION</div>
+    <div class="text-content">${deal.dealInformation}</div>
+  </div>` : ''}
+
+  ${(deal.heroImage || deal.int1Image || deal.int2Image || deal.int3Image || deal.int4Image) ? `
+  <div class="section">
+    <div class="section-title">PROPERTY PHOTOS</div>
+    <div class="images">
+      ${deal.heroImage ? `<img src="${deal.heroImage}" class="image-hero" alt="Main Property" />` : ''}
+      ${deal.int1Image ? `<img src="${deal.int1Image}" alt="Interior 1" />` : ''}
+      ${deal.int2Image ? `<img src="${deal.int2Image}" alt="Interior 2" />` : ''}
+      ${deal.int3Image ? `<img src="${deal.int3Image}" alt="Interior 3" />` : ''}
+      ${deal.int4Image ? `<img src="${deal.int4Image}" alt="Interior 4" />` : ''}
+    </div>
+  </div>` : ''}
 </body>
 </html>`;
     
