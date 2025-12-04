@@ -69,6 +69,16 @@ app.get("/api/debug", async (req, res) => {
   });
 });
 
+// === Health check endpoint ===
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    database: db.isPostgres ? 'postgresql' : 'sqlite',
+    version: '1.0.0'
+  });
+});
+
 // === Index endpoint ===
 app.get("/api/pdfs", async (req, res) => {
   const listFiles = (dir) => {
@@ -96,8 +106,16 @@ app.get("/api/pdfs", async (req, res) => {
 // === PDF Generation and Merging ===
 app.post("/api/generate-pdf/:id", async (req, res) => {
   try {
-    const { default: puppeteer } = await import('puppeteer');
-    const { PDFDocument } = await import('pdf-lib');
+    let puppeteer, PDFDocument;
+    try {
+      const puppeteerModule = await import('puppeteer');
+      puppeteer = puppeteerModule.default;
+      const pdfLibModule = await import('pdf-lib');
+      PDFDocument = pdfLibModule.PDFDocument;
+    } catch (importErr) {
+      console.error('Failed to import PDF libraries:', importErr);
+      return res.status(500).json({ error: 'PDF generation not available: ' + importErr.message });
+    }
     
     // Get the deal data
     let deal;
@@ -112,11 +130,30 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
       return res.status(404).json({ error: 'Deal not found' });
     }
     
-    // Launch headless browser
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    // Launch headless browser with Railway-compatible options
+    let browser;
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding'
+        ],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
+      });
+    } catch (launchErr) {
+      console.error('Failed to launch browser:', launchErr);
+      return res.status(500).json({ error: 'Failed to start PDF generator: ' + launchErr.message });
+    }
     
     const page = await browser.newPage();
     
