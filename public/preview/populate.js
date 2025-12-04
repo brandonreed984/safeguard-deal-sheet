@@ -124,8 +124,8 @@
       if (genBtn) genBtn.addEventListener('click', () => generateAndUpload(data));
 
       // If URL has ?autogen=1 trigger PDF generation and upload
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('autogen') === '1') {
+      // (params already declared at top of function)
+      if (params && params.get('autogen') === '1') {
         // wait briefly to ensure images/styles applied
         setTimeout(() => {
           generateAndUpload(data).catch(err => console.error('Auto-generate failed', err));
