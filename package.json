@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "postinstall": "node -e \"console.log('Install complete')\""
+    "postinstall": "node -e \"console.log('Installation completed successfully')\""
   },
   "dependencies": {
     "better-sqlite3": "^12.4.1",
