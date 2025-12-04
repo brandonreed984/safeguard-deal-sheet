@@ -3,7 +3,7 @@ import pkg from 'pg';
 const { Pool } = pkg;
 
 // Use PostgreSQL if DATABASE_URL is set (production), otherwise SQLite for local dev
-const DATABASE_URL = process.env.DATABASE_URL;
+const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:aqDDwRuguUFygnItdhWQYISTBYSrWHkB@postgres.railway.internal:5432/railway';
 
 let db;
 
