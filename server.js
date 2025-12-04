@@ -17,17 +17,7 @@ console.log('DATABASE_URL value:', process.env.DATABASE_URL ? 'SET (hidden)' : '
 console.log('All env keys:', Object.keys(process.env).filter(k => k.includes('DATA') || k.includes('PG')));
 console.log('PORT:', process.env.PORT || 5000);
 
-// Create a fresh PostgreSQL pool if DATABASE_URL exists
-let pgPool = null;
-if (process.env.DATABASE_URL) {
-  pgPool = new pg.Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-  });
-  console.log('✅ Created fresh PostgreSQL pool');
-}
-
-// Import db for table creation only
+// Import db - it will have the PostgreSQL pool or SQLite connection
 import db from "./db.js";
 console.log('db loaded for initialization');
 
@@ -73,9 +63,9 @@ app.post("/api/pdfs", upload.single("file"), async (req, res) => {
 app.get("/api/debug", async (req, res) => {
   res.json({
     hasDATABASE_URL: !!process.env.DATABASE_URL,
-    hasPgPool: !!pgPool,
+    isPostgres: !!db.isPostgres,
     nodeVersion: process.version,
-    pgVersion: pgPool ? 'pool exists' : 'no pool'
+    dbType: db.isPostgres ? 'PostgreSQL' : 'SQLite'
   });
 });
 
@@ -111,32 +101,27 @@ app.post("/api/deals", async (req, res) => {
     const data = req.body;
     console.log('📝 Creating deal:', data.loanNumber, data.address);
     
-    if (pgPool) {
+    if (db.isPostgres) {
       // PostgreSQL
       console.log('Using PostgreSQL');
-      const client = await pgPool.connect();
-      try {
-        const queryText = `INSERT INTO deals (
-          "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
-          address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
-          "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
-          "int3Image", "int4Image", "attachedPdf"
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-        RETURNING id`;
-        
-        const queryValues = [
-          data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
-          data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
-          data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-          data.int3, data.int4, data.attachedPdf
-        ];
-        
-        const result = await client.query(queryText, queryValues);
-        console.log('✅ Deal created with ID:', result.rows[0].id);
-        res.json({ ok: true, id: result.rows[0].id });
-      } finally {
-        client.release();
-      }
+      const queryText = `INSERT INTO deals (
+        "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
+        address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
+        "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
+        "int3Image", "int4Image", "attachedPdf"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      RETURNING id`;
+      
+      const queryValues = [
+        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
+        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
+        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
+        data.int3, data.int4, data.attachedPdf
+      ];
+      
+      const result = await db.query(queryText, queryValues);
+      console.log('✅ Deal created with ID:', result.rows[0].id);
+      res.json({ ok: true, id: result.rows[0].id });
     } else {
       // SQLite
       const stmt = db.prepare(`
@@ -168,16 +153,16 @@ app.get("/api/deals", async (req, res) => {
     const search = req.query.search || '';
     let deals;
     
-    if (pgPool) {
+    if (db.isPostgres) {
       // PostgreSQL
       if (search) {
-        const result = await pgPool.query(
+        const result = await db.query(
           'SELECT * FROM deals WHERE address ILIKE $1 OR "loanNumber" ILIKE $2 ORDER BY "updatedAt" DESC',
           [`%${search}%`, `%${search}%`]
         );
         deals = result.rows;
       } else {
-        const result = await pgPool.query('SELECT * FROM deals ORDER BY "updatedAt" DESC');
+        const result = await db.query('SELECT * FROM deals ORDER BY "updatedAt" DESC');
         deals = result.rows;
       }
     } else {
@@ -201,9 +186,9 @@ app.get("/api/deals/:id", async (req, res) => {
   try {
     let deal;
     
-    if (pgPool) {
+    if (db.isPostgres) {
       // PostgreSQL
-      const result = await pgPool.query(
+      const result = await db.query(
         'SELECT * FROM deals WHERE id = $1',
         [req.params.id]
       );
@@ -226,9 +211,9 @@ app.put("/api/deals/:id", async (req, res) => {
   try {
     const data = req.body;
     
-    if (pgPool) {
+    if (db.isPostgres) {
       // PostgreSQL
-      await pgPool.query(
+      await db.query(
         `UPDATE deals SET
           "loanNumber"=$2, amount=$3, "rateType"=$4, term=$5, "monthlyReturn"=$6, ltv=$7,
           address=$8, appraisal=$9, rent=$10, sqft=$11, "bedsBaths"=$12, "marketLocation"=$13,
@@ -271,9 +256,9 @@ app.put("/api/deals/:id", async (req, res) => {
 // Delete a deal
 app.delete("/api/deals/:id", async (req, res) => {
   try {
-    if (pgPool) {
+    if (db.isPostgres) {
       // PostgreSQL
-      await pgPool.query(
+      await db.query(
         'DELETE FROM deals WHERE id = $1',
         [req.params.id]
       );
