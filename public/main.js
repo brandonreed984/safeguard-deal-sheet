@@ -387,10 +387,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       }
     }
     
-    setStatus('Deal saved successfully!');
-    setTimeout(() => {
-      window.location.href = '/';
-    }, 1000);
+    setStatus('✅ Deal saved successfully!');
   } catch (err) {
     setStatus('Failed to save: ' + err.message, true);
   }
