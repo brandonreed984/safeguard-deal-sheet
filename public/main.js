@@ -35,6 +35,7 @@ if (genBtn) {
 
 // Check if editing existing deal
 let currentDealId = null;
+let existingDealData = null; // Store loaded deal data to preserve on save
 const urlParams = new URLSearchParams(window.location.search);
 const editId = urlParams.get('id');
 
@@ -49,6 +50,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       const res = await fetch(`/api/deals/${editId}`);
       const deal = await res.json();
       currentDealId = deal.id;
+      existingDealData = deal; // Store for later use
       
       // Populate form fields
       document.querySelector('input[name="loanNumber"]').value = deal.loanNumber || '';
@@ -261,6 +263,7 @@ async function collectFormData() {
   for (const name of imageSlots) {
     const file = fd.get(name);
     if (file && file instanceof File && file.size) {
+      // New file uploaded - use it
       try {
         const url = await fileToDataUrl(file);
         if (url) {
@@ -269,12 +272,29 @@ async function collectFormData() {
       } catch (e) {
         console.warn('Failed to read file for', name, e);
       }
+    } else if (existingDealData && existingDealData[`${name}Image`]) {
+      // No new file - preserve existing from database
+      data[name] = existingDealData[`${name}Image`];
     }
   }
 
   // Attach multiple PDFs as data URLs if present
   const pdfFiles = fd.getAll('attachedPdfs');
   const pdfDataUrls = [];
+  
+  // First, preserve existing PDFs if editing
+  if (existingDealData && existingDealData.attachedPdf) {
+    try {
+      const existingPdfs = JSON.parse(existingDealData.attachedPdf);
+      if (Array.isArray(existingPdfs)) {
+        pdfDataUrls.push(...existingPdfs);
+      }
+    } catch (e) {
+      console.warn('Failed to parse existing PDFs', e);
+    }
+  }
+  
+  // Then add any new PDFs uploaded
   for (const pdfFile of pdfFiles) {
     if (pdfFile && pdfFile instanceof File && pdfFile.size) {
       try {
