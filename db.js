@@ -3,7 +3,9 @@ import pkg from 'pg';
 const { Pool } = pkg;
 
 // Use PostgreSQL if DATABASE_URL is set (production), otherwise SQLite for local dev
-const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:aqDDwRuguUFygnItdhWQYISTBYSrWHkB@postgres.railway.internal:5432/railway';
+// Only use the hardcoded Railway URL if we're actually on Railway (check for RAILWAY_ENVIRONMENT)
+const DATABASE_URL = process.env.DATABASE_URL || 
+  (process.env.RAILWAY_ENVIRONMENT ? 'postgresql://postgres:aqDDwRuguUFygnItdhWQYISTBYSrWHkB@postgres.railway.internal:5432/railway' : null);
 
 let db;
 
@@ -22,49 +24,65 @@ if (DATABASE_URL) {
   try {
     await pool.query('SELECT NOW()');
     console.log('✅ PostgreSQL connected');
+    
+    // Create deals table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS deals (
+        id SERIAL PRIMARY KEY,
+        "loanNumber" TEXT UNIQUE NOT NULL,
+        amount TEXT,
+        "rateType" TEXT,
+        term TEXT,
+        "monthlyReturn" TEXT,
+        ltv TEXT,
+        address TEXT NOT NULL,
+        appraisal TEXT,
+        rent TEXT,
+        sqft TEXT,
+        "bedsBaths" TEXT,
+        "marketLocation" TEXT,
+        "marketOverview" TEXT,
+        "dealInformation" TEXT,
+        "heroImage" TEXT,
+        "int1Image" TEXT,
+        "int2Image" TEXT,
+        "int3Image" TEXT,
+        "int4Image" TEXT,
+        "attachedPdf" TEXT,
+        "pdfPath" TEXT,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_address ON deals(address);
+      CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals("loanNumber");
+    `);
+
+    // Create portfolio_reviews table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS portfolio_reviews (
+        id SERIAL PRIMARY KEY,
+        "investorName" TEXT NOT NULL,
+        "loansData" TEXT NOT NULL,
+        "currentInvestmentTotal" DECIMAL(15,2),
+        "lifetimeInvestmentTotal" DECIMAL(15,2),
+        "lifetimeInterestPaid" DECIMAL(15,2),
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      
+      CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews("investorName");
+    `);
+
+    // Export the raw pool for PostgreSQL
+    db = pool;
+    db.isPostgres = true;
+
+    console.log('✅ PostgreSQL Database initialized');
   } catch (err) {
     console.error('❌ PostgreSQL connection failed:', err.message);
     throw err;
   }
-
-  // Create deals table
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS deals (
-      id SERIAL PRIMARY KEY,
-      "loanNumber" TEXT UNIQUE NOT NULL,
-      amount TEXT,
-      "rateType" TEXT,
-      term TEXT,
-      "monthlyReturn" TEXT,
-      ltv TEXT,
-      address TEXT NOT NULL,
-      appraisal TEXT,
-      rent TEXT,
-      sqft TEXT,
-      "bedsBaths" TEXT,
-      "marketLocation" TEXT,
-      "marketOverview" TEXT,
-      "dealInformation" TEXT,
-      "heroImage" TEXT,
-      "int1Image" TEXT,
-      "int2Image" TEXT,
-      "int3Image" TEXT,
-      "int4Image" TEXT,
-      "attachedPdf" TEXT,
-      "pdfPath" TEXT,
-      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    
-    CREATE INDEX IF NOT EXISTS idx_address ON deals(address);
-    CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals("loanNumber");
-  `);
-
-  // Export the raw pool for PostgreSQL
-  db = pool;
-  db.isPostgres = true;
-
-  console.log('✅ PostgreSQL Database initialized');
 } else {
   // SQLite for local development
   const Database = (await import('better-sqlite3')).default;
@@ -106,6 +124,22 @@ if (DATABASE_URL) {
     
     CREATE INDEX IF NOT EXISTS idx_address ON deals(address);
     CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals(loanNumber);
+  `);
+
+  // Create portfolio_reviews table for SQLite
+  sqlite.exec(`
+    CREATE TABLE IF NOT EXISTS portfolio_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      investorName TEXT NOT NULL,
+      loansData TEXT NOT NULL,
+      currentInvestmentTotal REAL,
+      lifetimeInvestmentTotal REAL,
+      lifetimeInterestPaid REAL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    
+    CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews(investorName);
   `);
   
   db = sqlite;

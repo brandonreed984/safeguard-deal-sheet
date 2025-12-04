@@ -487,6 +487,311 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
   }
 });
 
+// === Portfolio PDF Generation ===
+app.post("/api/generate-portfolio-pdf/:id", async (req, res) => {
+  try {
+    let puppeteer, PDFDocument;
+    try {
+      const puppeteerModule = await import('puppeteer');
+      puppeteer = puppeteerModule.default;
+      const pdfLibModule = await import('pdf-lib');
+      PDFDocument = pdfLibModule.PDFDocument;
+    } catch (importErr) {
+      console.error('Failed to import PDF libraries:', importErr);
+      return res.status(500).json({ error: 'PDF generation not available: ' + importErr.message });
+    }
+    
+    // Load logo
+    let logoDataUrl = '';
+    try {
+      const logoPath = path.join(process.cwd(), 'public', 'preview', 'assets', 'Safeguard_Logo_Cropped.png');
+      const logoBuffer = fs.readFileSync(logoPath);
+      const logoBase64 = logoBuffer.toString('base64');
+      logoDataUrl = `data:image/png;base64,${logoBase64}`;
+    } catch (logoErr) {
+      console.warn('Failed to load logo:', logoErr.message);
+    }
+    
+    // Get portfolio data
+    let portfolio;
+    if (db.isPostgres) {
+      const result = await db.query('SELECT * FROM portfolio_reviews WHERE id = $1', [req.params.id]);
+      portfolio = result.rows[0];
+    } else {
+      portfolio = db.prepare('SELECT * FROM portfolio_reviews WHERE id = ?').get(req.params.id);
+    }
+    
+    if (!portfolio) {
+      return res.status(404).json({ error: 'Portfolio not found' });
+    }
+    
+    console.log('📊 Generating portfolio PDF for:', portfolio.investorName);
+    
+    // Parse loans data
+    let loans = [];
+    try {
+      loans = JSON.parse(portfolio.loansData || '[]');
+    } catch (e) {
+      console.error('Failed to parse loans data:', e);
+    }
+    
+    // Separate current and paid off loans
+    const currentLoans = loans.filter(l => l.status !== 'Paid Off');
+    const paidOffLoans = loans.filter(l => l.status === 'Paid Off');
+    
+    // Calculate totals
+    const currentTotal = currentLoans.reduce((sum, l) => sum + (parseFloat(l.balance) || 0), 0);
+    const currentInterest = currentLoans.reduce((sum, l) => sum + (parseFloat(l.interestPaid) || 0), 0);
+    const paidOffTotal = paidOffLoans.reduce((sum, l) => sum + (parseFloat(l.balance) || 0), 0);
+    const paidOffInterest = paidOffLoans.reduce((sum, l) => sum + (parseFloat(l.interestPaid) || 0), 0);
+    
+    // Launch browser
+    let browser;
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--disable-gpu',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process'
+        ],
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
+      });
+    } catch (launchErr) {
+      console.error('Failed to launch browser:', launchErr);
+      return res.status(500).json({ error: 'Failed to start PDF generator: ' + launchErr.message });
+    }
+    
+    const page = await browser.newPage();
+    
+    // Format currency
+    const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+    
+    // Generate loan rows HTML
+    const generateLoanRows = (loanList) => loanList.map(loan => `
+      <tr style="border-bottom:1px solid #e0e0e0;">
+        <td style="padding:10px;">${loan.address}</td>
+        <td style="padding:10px;text-align:right;">${fmt(loan.balance)}</td>
+        <td style="padding:10px;text-align:right;">${fmt(loan.interestPaid)}</td>
+        <td style="padding:10px;text-align:center;">${loan.status}</td>
+      </tr>
+    `).join('');
+    
+    // Build HTML
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      padding: 0.5in;
+      color: #333;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 3px solid #1E66B4;
+    }
+    .logo {
+      height: 80px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      color: #1E66B4;
+      font-size: 28pt;
+      margin-bottom: 5px;
+    }
+    .investor-name {
+      font-size: 20pt;
+      color: #333;
+      font-weight: 600;
+    }
+    .summary {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 30px;
+      border: 2px solid #1E66B4;
+    }
+    .summary h2 {
+      color: #1E66B4;
+      font-size: 18pt;
+      margin-bottom: 15px;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+    .summary-item {
+      text-align: center;
+    }
+    .summary-label {
+      font-size: 11pt;
+      color: #666;
+      margin-bottom: 5px;
+    }
+    .summary-value {
+      font-size: 20pt;
+      font-weight: bold;
+      color: #1E66B4;
+    }
+    .section {
+      margin-bottom: 40px;
+    }
+    .section h2 {
+      color: #1E66B4;
+      font-size: 16pt;
+      margin-bottom: 15px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #1E66B4;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border: 1px solid #ddd;
+    }
+    th {
+      background: #1E66B4;
+      color: white;
+      padding: 12px;
+      text-align: left;
+      font-size: 11pt;
+    }
+    th.right { text-align: right; }
+    th.center { text-align: center; }
+    td {
+      font-size: 10pt;
+    }
+    .section-total {
+      background: #f0f7ff;
+      font-weight: bold;
+      color: #1E66B4;
+    }
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 10pt;
+      color: #666;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    ${logoDataUrl ? `<img src="${logoDataUrl}" class="logo" alt="Safeguard">` : ''}
+    <h1>Portfolio Review</h1>
+    <div class="investor-name">${portfolio.investorName}</div>
+  </div>
+
+  <div class="summary">
+    <h2>Summary</h2>
+    <div class="summary-grid">
+      <div class="summary-item">
+        <div class="summary-label">Current Investment</div>
+        <div class="summary-value">${fmt(portfolio.currentInvestmentTotal)}</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Lifetime Investment</div>
+        <div class="summary-value">${fmt(portfolio.lifetimeInvestmentTotal)}</div>
+      </div>
+      <div class="summary-item">
+        <div class="summary-label">Lifetime Interest Paid</div>
+        <div class="summary-value">${fmt(portfolio.lifetimeInterestPaid)}</div>
+      </div>
+    </div>
+  </div>
+
+  ${currentLoans.length > 0 ? `
+  <div class="section">
+    <h2>Current Investments (${currentLoans.length} Loans)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Address</th>
+          <th class="right">Principal Balance</th>
+          <th class="right">Interest Paid</th>
+          <th class="center">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${generateLoanRows(currentLoans)}
+        <tr class="section-total">
+          <td style="padding:12px;"><strong>Current Investment Total</strong></td>
+          <td style="padding:12px;text-align:right;"><strong>${fmt(currentTotal)}</strong></td>
+          <td style="padding:12px;text-align:right;"><strong>${fmt(currentInterest)}</strong></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  ` : ''}
+
+  ${paidOffLoans.length > 0 ? `
+  <div class="section">
+    <h2>Paid Off and Closed (${paidOffLoans.length} Loans)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Address</th>
+          <th class="right">Principal Balance</th>
+          <th class="right">Interest Paid</th>
+          <th class="center">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${generateLoanRows(paidOffLoans)}
+        <tr class="section-total">
+          <td style="padding:12px;"><strong>Paid Off Total</strong></td>
+          <td style="padding:12px;text-align:right;"><strong>${fmt(paidOffTotal)}</strong></td>
+          <td style="padding:12px;text-align:right;"><strong>${fmt(paidOffInterest)}</strong></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  ` : ''}
+
+  <div class="footer">
+    Generated on ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+  </div>
+</body>
+</html>
+    `;
+    
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
+    const pdfBuffer = await page.pdf({
+      format: 'Letter',
+      printBackground: true,
+      margin: { top: '0.5in', right: '0.5in', bottom: '0.5in', left: '0.5in' }
+    });
+    
+    await browser.close();
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Portfolio-${portfolio.investorName.replace(/\s+/g, '-')}.pdf"`);
+    res.send(pdfBuffer);
+    
+    console.log('✅ Portfolio PDF generated successfully');
+    
+  } catch (err) {
+    console.error('Portfolio PDF generation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // === Database Endpoints ===
 
 // Create or update a deal
@@ -666,6 +971,145 @@ app.delete("/api/deals/:id", async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ============================
+// Portfolio Review API Routes
+// ============================
+
+// Get all portfolios
+app.get("/api/portfolios", async (req, res) => {
+  try {
+    const search = req.query.search || '';
+    
+    if (db.isPostgres) {
+      const result = await db.query(
+        `SELECT * FROM portfolio_reviews 
+         WHERE investorName ILIKE $1 
+         ORDER BY updatedAt DESC`,
+        [`%${search}%`]
+      );
+      res.json(result.rows);
+    } else {
+      const stmt = db.prepare(
+        `SELECT * FROM portfolio_reviews 
+         WHERE investorName LIKE ? 
+         ORDER BY updatedAt DESC`
+      );
+      const portfolios = stmt.all(`%${search}%`);
+      res.json(portfolios);
+    }
+  } catch (e) {
+    console.error('Error fetching portfolios:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Get single portfolio
+app.get("/api/portfolios/:id", async (req, res) => {
+  try {
+    if (db.isPostgres) {
+      const result = await db.query(
+        'SELECT * FROM portfolio_reviews WHERE id = $1',
+        [req.params.id]
+      );
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Portfolio not found' });
+      }
+      res.json(result.rows[0]);
+    } else {
+      const stmt = db.prepare('SELECT * FROM portfolio_reviews WHERE id = ?');
+      const portfolio = stmt.get(req.params.id);
+      if (!portfolio) {
+        return res.status(404).json({ error: 'Portfolio not found' });
+      }
+      res.json(portfolio);
+    }
+  } catch (e) {
+    console.error('Error fetching portfolio:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Create portfolio
+app.post("/api/portfolios", async (req, res) => {
+  try {
+    const data = req.body;
+    
+    if (db.isPostgres) {
+      const result = await db.query(
+        `INSERT INTO portfolio_reviews 
+         (investorName, loansData, currentInvestmentTotal, lifetimeInvestmentTotal, lifetimeInterestPaid) 
+         VALUES ($1, $2, $3, $4, $5) 
+         RETURNING id`,
+        [data.investorName, data.loansData, data.currentInvestmentTotal, 
+         data.lifetimeInvestmentTotal, data.lifetimeInterestPaid]
+      );
+      res.json({ ok: true, id: result.rows[0].id });
+    } else {
+      const stmt = db.prepare(
+        `INSERT INTO portfolio_reviews 
+         (investorName, loansData, currentInvestmentTotal, lifetimeInvestmentTotal, lifetimeInterestPaid) 
+         VALUES (?, ?, ?, ?, ?)`
+      );
+      const result = stmt.run(
+        data.investorName, data.loansData, data.currentInvestmentTotal,
+        data.lifetimeInvestmentTotal, data.lifetimeInterestPaid
+      );
+      res.json({ ok: true, id: result.lastInsertRowid });
+    }
+  } catch (e) {
+    console.error('Error creating portfolio:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Update portfolio
+app.put("/api/portfolios/:id", async (req, res) => {
+  try {
+    const data = req.body;
+    
+    if (db.isPostgres) {
+      await db.query(
+        `UPDATE portfolio_reviews SET 
+         investorName=$1, loansData=$2, currentInvestmentTotal=$3, 
+         lifetimeInvestmentTotal=$4, lifetimeInterestPaid=$5, updatedAt=CURRENT_TIMESTAMP 
+         WHERE id=$6`,
+        [data.investorName, data.loansData, data.currentInvestmentTotal,
+         data.lifetimeInvestmentTotal, data.lifetimeInterestPaid, req.params.id]
+      );
+    } else {
+      const stmt = db.prepare(
+        `UPDATE portfolio_reviews SET 
+         investorName=?, loansData=?, currentInvestmentTotal=?, 
+         lifetimeInvestmentTotal=?, lifetimeInterestPaid=?, updatedAt=CURRENT_TIMESTAMP 
+         WHERE id=?`
+      );
+      stmt.run(
+        data.investorName, data.loansData, data.currentInvestmentTotal,
+        data.lifetimeInvestmentTotal, data.lifetimeInterestPaid, req.params.id
+      );
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error updating portfolio:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Delete portfolio
+app.delete("/api/portfolios/:id", async (req, res) => {
+  try {
+    if (db.isPostgres) {
+      await db.query('DELETE FROM portfolio_reviews WHERE id = $1', [req.params.id]);
+    } else {
+      db.prepare('DELETE FROM portfolio_reviews WHERE id = ?').run(req.params.id);
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('Error deleting portfolio:', e);
     res.status(500).json({ error: e.message });
   }
 });
