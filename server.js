@@ -78,24 +78,42 @@ app.get("/api/pdfs", async (req, res) => {
 app.post("/api/deals", async (req, res) => {
   try {
     const data = req.body;
-    const stmt = db.prepare(`
-      INSERT INTO deals (
-        "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
-        address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
-        "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
-        "int3Image", "int4Image", "attachedPdf"
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-      RETURNING id
-    `);
     
-    const result = await stmt.run(
-      data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
-      data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
-      data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-      data.int3, data.int4, data.attachedPdf
-    );
-    
-    res.json({ ok: true, id: result.lastInsertRowid });
+    if (db.pool) {
+      // PostgreSQL
+      const result = await db.pool.query(`
+        INSERT INTO deals (
+          "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
+          address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
+          "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
+          "int3Image", "int4Image", "attachedPdf"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+        RETURNING id
+      `, [
+        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
+        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
+        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
+        data.int3, data.int4, data.attachedPdf
+      ]);
+      res.json({ ok: true, id: result.rows[0].id });
+    } else {
+      // SQLite
+      const stmt = db.prepare(`
+        INSERT INTO deals (
+          loanNumber, amount, rateType, term, monthlyReturn, ltv,
+          address, appraisal, rent, sqft, bedsBaths, marketLocation,
+          marketOverview, dealInformation, heroImage, int1Image, int2Image,
+          int3Image, int4Image, attachedPdf
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+      const result = stmt.run(
+        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
+        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
+        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
+        data.int3, data.int4, data.attachedPdf
+      );
+      res.json({ ok: true, id: result.lastInsertRowid });
+    }
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
@@ -107,11 +125,27 @@ app.get("/api/deals", async (req, res) => {
   try {
     const search = req.query.search || '';
     let deals;
-    if (search) {
-      const stmt = db.prepare('SELECT * FROM deals WHERE address ILIKE $1 OR "loanNumber" ILIKE $2 ORDER BY "updatedAt" DESC');
-      deals = await stmt.all(`%${search}%`, `%${search}%`);
+    
+    if (db.pool) {
+      // PostgreSQL
+      if (search) {
+        const result = await db.pool.query(
+          'SELECT * FROM deals WHERE address ILIKE $1 OR "loanNumber" ILIKE $2 ORDER BY "updatedAt" DESC',
+          [`%${search}%`, `%${search}%`]
+        );
+        deals = result.rows;
+      } else {
+        const result = await db.pool.query('SELECT * FROM deals ORDER BY "updatedAt" DESC');
+        deals = result.rows;
+      }
     } else {
-      deals = await db.prepare('SELECT * FROM deals ORDER BY "updatedAt" DESC').all();
+      // SQLite
+      if (search) {
+        const stmt = db.prepare('SELECT * FROM deals WHERE address LIKE ? OR loanNumber LIKE ? ORDER BY updatedAt DESC');
+        deals = stmt.all(`%${search}%`, `%${search}%`);
+      } else {
+        deals = db.prepare('SELECT * FROM deals ORDER BY updatedAt DESC').all();
+      }
     }
     res.json(deals);
   } catch (e) {
@@ -123,7 +157,17 @@ app.get("/api/deals", async (req, res) => {
 // Get a single deal by ID
 app.get("/api/deals/:id", async (req, res) => {
   try {
-    const deal = await db.prepare('SELECT * FROM deals WHERE id = $1').get(req.params.id);
+    let deal;
+    
+    if (db.pool) {
+      // PostgreSQL
+      const result = await db.pool.query('SELECT * FROM deals WHERE id = $1', [req.params.id]);
+      deal = result.rows[0];
+    } else {
+      // SQLite
+      deal = db.prepare('SELECT * FROM deals WHERE id = ?').get(req.params.id);
+    }
+    
     if (!deal) return res.status(404).json({ error: 'Deal not found' });
     res.json(deal);
   } catch (e) {
@@ -136,22 +180,40 @@ app.get("/api/deals/:id", async (req, res) => {
 app.put("/api/deals/:id", async (req, res) => {
   try {
     const data = req.body;
-    const stmt = db.prepare(`
-      UPDATE deals SET
-        "loanNumber"=$2, amount=$3, "rateType"=$4, term=$5, "monthlyReturn"=$6, ltv=$7,
-        address=$8, appraisal=$9, rent=$10, sqft=$11, "bedsBaths"=$12, "marketLocation"=$13,
-        "marketOverview"=$14, "dealInformation"=$15, "heroImage"=$16, "int1Image"=$17, "int2Image"=$18,
-        "int3Image"=$19, "int4Image"=$20, "attachedPdf"=$21, "updatedAt"=CURRENT_TIMESTAMP
-      WHERE id = $1
-    `);
     
-    await stmt.run(
-      req.params.id,
-      data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
-      data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
-      data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-      data.int3, data.int4, data.attachedPdf
-    );
+    if (db.pool) {
+      // PostgreSQL
+      await db.pool.query(`
+        UPDATE deals SET
+          "loanNumber"=$2, amount=$3, "rateType"=$4, term=$5, "monthlyReturn"=$6, ltv=$7,
+          address=$8, appraisal=$9, rent=$10, sqft=$11, "bedsBaths"=$12, "marketLocation"=$13,
+          "marketOverview"=$14, "dealInformation"=$15, "heroImage"=$16, "int1Image"=$17, "int2Image"=$18,
+          "int3Image"=$19, "int4Image"=$20, "attachedPdf"=$21, "updatedAt"=CURRENT_TIMESTAMP
+        WHERE id = $1
+      `, [
+        req.params.id,
+        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
+        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
+        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
+        data.int3, data.int4, data.attachedPdf
+      ]);
+    } else {
+      // SQLite
+      const stmt = db.prepare(`
+        UPDATE deals SET
+          loanNumber=?, amount=?, rateType=?, term=?, monthlyReturn=?, ltv=?,
+          address=?, appraisal=?, rent=?, sqft=?, bedsBaths=?, marketLocation=?,
+          marketOverview=?, dealInformation=?, heroImage=?, int1Image=?, int2Image=?,
+          int3Image=?, int4Image=?, attachedPdf=?, updatedAt=CURRENT_TIMESTAMP
+        WHERE id = ?
+      `);
+      stmt.run(
+        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
+        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
+        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
+        data.int3, data.int4, data.attachedPdf, req.params.id
+      );
+    }
     
     res.json({ ok: true });
   } catch (e) {
@@ -163,7 +225,13 @@ app.put("/api/deals/:id", async (req, res) => {
 // Delete a deal
 app.delete("/api/deals/:id", async (req, res) => {
   try {
-    await db.prepare('DELETE FROM deals WHERE id = $1').run(req.params.id);
+    if (db.pool) {
+      // PostgreSQL
+      await db.pool.query('DELETE FROM deals WHERE id = $1', [req.params.id]);
+    } else {
+      // SQLite
+      db.prepare('DELETE FROM deals WHERE id = ?').run(req.params.id);
+    }
     res.json({ ok: true });
   } catch (e) {
     console.error(e);

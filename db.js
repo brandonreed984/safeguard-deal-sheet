@@ -48,21 +48,23 @@ if (DATABASE_URL) {
   `);
 
   db = {
-    prepare: (sql) => ({
-      run: async (...params) => {
-        const result = await pool.query(sql, params);
-        return { lastInsertRowid: result.rows[0]?.id, changes: result.rowCount };
-      },
-      get: async (...params) => {
-        const result = await pool.query(sql, params);
-        return result.rows[0];
-      },
-      all: async (...params) => {
-        const result = await pool.query(sql, params);
-        return result.rows;
-      }
-    }),
-    query: (sql, params) => pool.query(sql, params)
+    pool: pool,
+    prepare: (sql) => {
+      return {
+        run: async (...params) => {
+          const result = await pool.query(sql, params);
+          return { lastInsertRowid: result.rows[0]?.id, changes: result.rowCount };
+        },
+        get: async (...params) => {
+          const result = await pool.query(sql, params);
+          return result.rows[0];
+        },
+        all: async (...params) => {
+          const result = await pool.query(sql, params);
+          return result.rows;
+        }
+      };
+    }
   };
 
   console.log('✅ PostgreSQL Database initialized');
