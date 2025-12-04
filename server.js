@@ -103,24 +103,29 @@ app.post("/api/deals", async (req, res) => {
     if (pgPool) {
       // PostgreSQL
       console.log('Using PostgreSQL');
-      const queryText = `INSERT INTO deals (
-        "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
-        address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
-        "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
-        "int3Image", "int4Image", "attachedPdf"
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-      RETURNING id`;
-      
-      const queryValues = [
-        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
-        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
-        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-        data.int3, data.int4, data.attachedPdf
-      ];
-      
-      const result = await pgPool.query(queryText, queryValues);
-      console.log('✅ Deal created with ID:', result.rows[0].id);
-      res.json({ ok: true, id: result.rows[0].id });
+      const client = await pgPool.connect();
+      try {
+        const queryText = `INSERT INTO deals (
+          "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
+          address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
+          "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
+          "int3Image", "int4Image", "attachedPdf"
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+        RETURNING id`;
+        
+        const queryValues = [
+          data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
+          data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
+          data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
+          data.int3, data.int4, data.attachedPdf
+        ];
+        
+        const result = await client.query(queryText, queryValues);
+        console.log('✅ Deal created with ID:', result.rows[0].id);
+        res.json({ ok: true, id: result.rows[0].id });
+      } finally {
+        client.release();
+      }
     } else {
       // SQLite
       const stmt = db.prepare(`
