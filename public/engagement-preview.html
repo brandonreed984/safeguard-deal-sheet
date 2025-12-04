@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Engagement Agreement Preview</title>
+  <script src="./auth-check.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .toolbar {
+      max-width: 900px;
+      margin: 0 auto 20px;
+      background: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .toolbar h2 {
+      color: #1E66B4;
+      font-size: 20px;
+    }
+    .toolbar-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 14px;
+    }
+    .btn-back {
+      background: #6c757d;
+      color: white;
+    }
+    .btn-primary {
+      background: #1E66B4;
+      color: white;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+    .preview-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      padding: 60px 80px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      min-height: 800px;
+    }
+    .agreement-content {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 12pt;
+      line-height: 1.6;
+      color: #000;
+    }
+    h1 {
+      text-align: center;
+      font-size: 18pt;
+      margin-bottom: 30px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    h2 {
+      font-size: 14pt;
+      margin-top: 25px;
+      margin-bottom: 15px;
+      text-decoration: underline;
+    }
+    p {
+      margin-bottom: 15px;
+      text-align: justify;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    .info-box {
+      background: #f5f5f5;
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin: 20px 0;
+    }
+    .info-row {
+      margin-bottom: 8px;
+    }
+    .info-label {
+      font-weight: bold;
+      display: inline-block;
+      width: 150px;
+    }
+    .signature-block {
+      margin-top: 60px;
+      display: inline-block;
+      width: 45%;
+    }
+    .signature-block:last-child {
+      margin-left: 8%;
+    }
+    .signature-line {
+      border-top: 1px solid #000;
+      width: 300px;
+      padding-top: 5px;
+      margin-top: 50px;
+    }
+    ul {
+      margin-left: 30px;
+      margin-top: 10px;
+    }
+    li {
+      margin-bottom: 5px;
+    }
+    #status {
+      max-width: 900px;
+      margin: 0 auto 20px;
+      padding: 10px 20px;
+      background: #fffbdd;
+      border: 1px solid #ffd24d;
+      border-radius: 4px;
+      text-align: center;
+      font-weight: 600;
+    }
+    #status.success {
+      background: #d4edda;
+      border-color: #c3e6cb;
+      color: #155724;
+    }
+    #status.error {
+      background: #f8d7da;
+      border-color: #f5c6cb;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <h2>Engagement Agreement Preview</h2>
+    <div class="toolbar-buttons">
+      <button class="btn btn-back" onclick="goBack()">← Back to Deal</button>
+      <button class="btn btn-primary" id="generatePdfBtn">Generate PDF</button>
+    </div>
+  </div>
+
+  <div id="status" style="display:none;"></div>
+
+  <div class="preview-container">
+    <div id="agreementContent" class="agreement-content">
+      <p style="text-align:center;">Loading agreement...</p>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const dealId = urlParams.get('dealId');
+
+    function setStatus(msg, isError = false, isSuccess = false) {
+      const status = document.getElementById('status');
+      status.textContent = msg;
+      status.style.display = 'block';
+      status.className = isError ? 'error' : (isSuccess ? 'success' : '');
+    }
+
+    function goBack() {
+      window.history.back();
+    }
+
+    async function loadAgreement() {
+      if (!dealId) {
+        setStatus('No deal ID provided', true);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/deals/${dealId}`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load deal');
+        const deal = await res.json();
+
+        if (!deal.clientName || !deal.lendingEntity || !deal.clientAddress) {
+          setStatus('Missing required fields: Client Name, Client Address, or Lending Entity', true);
+          document.getElementById('agreementContent').innerHTML = `
+            <p style="text-align:center;color:#dc3545;">
+              This deal is missing required engagement agreement information.<br>
+              Please go back and fill in Client Name, Client Address, and Lending Entity.
+            </p>
+          `;
+          return;
+        }
+
+        const today = new Date().toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+
+        document.getElementById('agreementContent').innerHTML = `
+          <h1>Loan Engagement Agreement</h1>
+          
+          <div class="info-box">
+            <div class="info-row">
+              <span class="info-label">Date:</span>
+              <span>${today}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Loan Number:</span>
+              <span>${deal.loanNumber}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Borrower:</span>
+              <span>${deal.clientName}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Borrower Address:</span>
+              <span>${deal.clientAddress}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Property Address:</span>
+              <span>${deal.address}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Loan Amount:</span>
+              <span>${deal.amount}</span>
+            </div>
+          </div>
+          
+          <div class="section">
+            <p>
+              This Loan Engagement Agreement ("Agreement") is entered into as of ${today}, by and between 
+              <strong>${deal.lendingEntity}</strong> ("Lender") and <strong>${deal.clientName}</strong> ("Borrower").
+            </p>
+          </div>
+          
+          <div class="section">
+            <h2>1. Loan Terms</h2>
+            <p>
+              Lender agrees to provide Borrower with a loan in the principal amount of ${deal.amount} ("Loan Amount") 
+              for the property located at ${deal.address} ("Property"). The loan will be subject to the following terms:
+            </p>
+            <ul>
+              <li>Interest Rate/Type: ${deal.rateType || 'As agreed'}</li>
+              <li>Term: ${deal.term || 'As agreed'}</li>
+              <li>Monthly Payment: ${deal.monthlyReturn || 'As calculated'}</li>
+              <li>Loan-to-Value (LTV): ${deal.ltv || 'As appraised'}</li>
+            </ul>
+          </div>
+          
+          <div class="section">
+            <h2>2. Property Information</h2>
+            <p>
+              The loan will be secured by the Property with an appraised value of ${deal.appraisal || 'To be determined'}. 
+              ${deal.bedsBaths ? `The Property consists of ${deal.bedsBaths}.` : ''} 
+              ${deal.rent ? `The estimated monthly rental income is ${deal.rent}.` : ''}
+            </p>
+          </div>
+          
+          <div class="section">
+            <h2>3. Borrower Representations</h2>
+            <p>
+              Borrower represents and warrants that all information provided in connection with this loan application 
+              is true, accurate, and complete. Borrower agrees to provide any additional documentation reasonably 
+              requested by Lender to complete the underwriting and closing of the loan.
+            </p>
+          </div>
+          
+          <div class="section">
+            <h2>4. Conditions Precedent</h2>
+            <p>
+              This Agreement and Lender's obligation to fund the loan are subject to the following conditions:
+            </p>
+            <ul>
+              <li>Satisfactory completion of due diligence, including title review and property inspection</li>
+              <li>Execution of final loan documents acceptable to Lender</li>
+              <li>Receipt of all required third-party reports (appraisal, insurance, etc.)</li>
+              <li>No material adverse change in Borrower's financial condition or the Property</li>
+            </ul>
+          </div>
+          
+          <div class="section">
+            <h2>5. Closing</h2>
+            <p>
+              The parties agree to use commercially reasonable efforts to close the loan within a mutually agreed timeframe. 
+              The exact closing date will be determined based on the satisfaction of all conditions precedent and the 
+              availability of both parties.
+            </p>
+          </div>
+          
+          <div class="section">
+            <h2>6. Expenses</h2>
+            <p>
+              Borrower agrees to pay all reasonable costs and expenses incurred in connection with the loan, including 
+              but not limited to appraisal fees, title insurance, recording fees, and legal fees.
+            </p>
+          </div>
+          
+          <div class="section">
+            <h2>7. Non-Binding</h2>
+            <p>
+              This Agreement represents the parties' intent to proceed with the loan transaction but does not constitute 
+              a binding commitment to fund or accept the loan. The parties' obligations will become binding only upon 
+              execution of definitive loan documents.
+            </p>
+          </div>
+          
+          <div class="section">
+            <h2>8. Governing Law</h2>
+            <p>
+              This Agreement shall be governed by and construed in accordance with the laws of the jurisdiction where 
+              the Property is located.
+            </p>
+          </div>
+          
+          <div style="margin-top: 80px;">
+            <div class="signature-block">
+              <div class="signature-line"></div>
+              <div style="margin-top: 5px;">
+                <strong>${deal.lendingEntity}</strong><br>
+                By: _______________________<br>
+                Name:<br>
+                Title:<br>
+                Date:
+              </div>
+            </div>
+            
+            <div class="signature-block">
+              <div class="signature-line"></div>
+              <div style="margin-top: 5px;">
+                <strong>${deal.clientName}</strong><br>
+                Borrower<br><br><br>
+                Date:
+              </div>
+            </div>
+          </div>
+        `;
+
+        setStatus('Preview loaded successfully', false, true);
+      } catch (err) {
+        console.error('Error loading agreement:', err);
+        setStatus('Failed to load agreement: ' + err.message, true);
+      }
+    }
+
+    // Generate PDF button
+    document.getElementById('generatePdfBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('generatePdfBtn');
+      const originalText = btn.textContent;
+      
+      try {
+        btn.textContent = 'Generating PDF...';
+        btn.disabled = true;
+        setStatus('Generating PDF...');
+        
+        const res = await fetch(`/api/deals/${dealId}/engagement-agreement`, {
+          credentials: 'include'
+        });
+        
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || 'Failed to generate PDF');
+        }
+        
+        // Download the PDF
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        
+        const contentDisposition = res.headers.get('Content-Disposition');
+        let filename = 'Engagement-Agreement.pdf';
+        if (contentDisposition) {
+          const matches = /filename="([^"]+)"/.exec(contentDisposition);
+          if (matches && matches[1]) {
+            filename = matches[1];
+          }
+        }
+        
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        setStatus('✅ PDF downloaded successfully!', false, true);
+        btn.textContent = '✓ PDF Generated';
+        
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.disabled = false;
+        }, 3000);
+      } catch (err) {
+        console.error('PDF generation error:', err);
+        setStatus('Failed to generate PDF: ' + err.message, true);
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    });
+
+    // Load agreement on page load
+    loadAgreement();
+  </script>
+</body>
+</html>

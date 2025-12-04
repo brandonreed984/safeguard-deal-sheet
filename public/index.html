@@ -381,55 +381,9 @@
       }
     }
 
-    async function generateEngagement(id, buttonElement) {
-      try {
-        const originalText = buttonElement.textContent;
-        buttonElement.textContent = 'Generating...';
-        buttonElement.disabled = true;
-        
-        const res = await fetch(`/api/deals/${id}/engagement-agreement`, {
-          credentials: 'include'
-        });
-        
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || 'Failed to generate engagement agreement');
-        }
-        
-        // Download the PDF
-        const blob = await res.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.style.display = 'none';
-        a.href = url;
-        
-        // Get filename from Content-Disposition header if available
-        const contentDisposition = res.headers.get('Content-Disposition');
-        let filename = 'Engagement-Agreement.pdf';
-        if (contentDisposition) {
-          const matches = /filename="([^"]+)"/.exec(contentDisposition);
-          if (matches && matches[1]) {
-            filename = matches[1];
-          }
-        }
-        
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        buttonElement.textContent = '✓ Downloaded';
-        setTimeout(() => {
-          buttonElement.textContent = originalText;
-          buttonElement.disabled = false;
-        }, 2000);
-      } catch (err) {
-        console.error('Engagement agreement error:', err);
-        alert('Failed to generate engagement agreement: ' + err.message);
-        buttonElement.textContent = 'Engagement';
-        buttonElement.disabled = false;
-      }
+    function generateEngagement(id) {
+      // Open engagement agreement preview in new tab
+      window.open(`/engagement-preview.html?dealId=${id}`, '_blank');
     }
 
     // Tab switching

@@ -571,9 +571,9 @@ document.getElementById('pdfBtn').addEventListener('click', async () => {
 // Generate Engagement Agreement Button
 const engagementBtn = document.getElementById('engagementBtn');
 if (engagementBtn) {
-  engagementBtn.addEventListener('click', async () => {
+  engagementBtn.addEventListener('click', () => {
     if (!currentDealId) {
-      alert('Please save the deal first before generating an engagement agreement.');
+      alert('Please save the deal first before previewing the engagement agreement.');
       return;
     }
     
@@ -582,39 +582,12 @@ if (engagementBtn) {
     const lendingEntity = document.querySelector('input[name="lendingEntity"]').value;
     
     if (!clientName || !clientAddress || !lendingEntity) {
-      alert('Please fill in Client Name, Client Address, and Lending Entity fields before generating the engagement agreement.');
+      alert('Please fill in Client Name, Client Address, and Lending Entity fields before previewing the engagement agreement.');
       return;
     }
     
-    setStatus('Generating engagement agreement PDF...');
-    
-    try {
-      const res = await fetch(`/api/deals/${currentDealId}/engagement-agreement`, {
-        credentials: 'include'
-      });
-      
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to generate engagement agreement');
-      }
-      
-      // Download the PDF
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = `Engagement-Agreement-${document.querySelector('input[name="loanNumber"]').value}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      setStatus('✅ Engagement agreement PDF downloaded successfully!');
-    } catch (err) {
-      console.error('Engagement agreement error:', err);
-      setStatus('Failed to generate engagement agreement: ' + err.message, true);
-    }
+    // Open preview page
+    window.open(`/engagement-preview.html?dealId=${currentDealId}`, '_blank');
   });
 }
 
