@@ -23,7 +23,14 @@ import db from "./db.js";
 console.log('db loaded for initialization');
 
 const app = express();
-app.use(cors());
+
+// Trust proxy - required for Railway/Heroku to work with secure cookies
+app.set('trust proxy', 1);
+
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 
 // Session configuration
@@ -32,9 +39,10 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    secure: process.env.DATABASE_URL ? true : false, // Use secure cookies on Railway (has DATABASE_URL)
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax'
   }
 }));
 

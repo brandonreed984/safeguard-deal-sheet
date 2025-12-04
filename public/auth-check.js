@@ -1,7 +1,9 @@
 // Auth check - redirects to login if not authenticated
 (async function checkAuth() {
   try {
-    const response = await fetch('/api/check-auth');
+    const response = await fetch('/api/check-auth', {
+      credentials: 'include'
+    });
     const data = await response.json();
     
     if (!data.authenticated) {

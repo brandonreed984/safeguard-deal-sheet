@@ -567,7 +567,10 @@ const logoutBtn = document.getElementById('logoutBtn');
 if (logoutBtn) {
   logoutBtn.addEventListener('click', async () => {
     try {
-      const response = await fetch('/api/logout', { method: 'POST' });
+      const response = await fetch('/api/logout', { 
+        method: 'POST',
+        credentials: 'include'
+      });
       if (response.ok) {
         window.location.href = '/login.html';
       } else {
