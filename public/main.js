@@ -189,12 +189,47 @@ async function collectFormData() {
   const fd = new FormData(form);
   const data = Object.fromEntries(fd.entries());
 
-  // Helper: convert File to data URL
-  async function fileToDataUrl(file) {
+  // Helper: convert and compress image File to data URL
+  async function fileToDataUrl(file, maxWidth = 1200, quality = 0.85) {
     if (!file || !file.size) return null;
+    if (!file.type.startsWith('image/')) {
+      // For non-images (like PDFs), just read as-is
+      return await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+    
     return await new Promise((resolve, reject) => {
+      const img = new Image();
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
+      
+      reader.onload = (e) => {
+        img.onload = () => {
+          // Calculate new dimensions
+          let width = img.width;
+          let height = img.height;
+          
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          
+          // Create canvas and compress
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          // Convert to compressed data URL
+          resolve(canvas.toDataURL('image/jpeg', quality));
+        };
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
