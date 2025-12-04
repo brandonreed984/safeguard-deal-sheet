@@ -68,6 +68,16 @@ app.post("/api/pdfs", upload.single("file"), async (req, res) => {
   }
 });
 
+// === Debug endpoint ===
+app.get("/api/debug", async (req, res) => {
+  res.json({
+    hasDATABASE_URL: !!process.env.DATABASE_URL,
+    hasPgPool: !!pgPool,
+    nodeVersion: process.version,
+    pgVersion: pgPool ? 'pool exists' : 'no pool'
+  });
+});
+
 // === Index endpoint ===
 app.get("/api/pdfs", async (req, res) => {
   const listFiles = (dir) => {
