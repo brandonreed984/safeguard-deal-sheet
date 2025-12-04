@@ -1012,8 +1012,8 @@ app.get("/api/portfolios", async (req, res) => {
     if (db.isPostgres) {
       const result = await db.query(
         `SELECT * FROM portfolio_reviews 
-         WHERE investorName ILIKE $1 
-         ORDER BY updatedAt DESC`,
+         WHERE "investorName" ILIKE $1 
+         ORDER BY "updatedAt" DESC`,
         [`%${search}%`]
       );
       res.json(result.rows);
