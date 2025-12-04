@@ -117,6 +117,17 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
       return res.status(500).json({ error: 'PDF generation not available: ' + importErr.message });
     }
     
+    // Load and encode logo as base64
+    let logoDataUrl = '';
+    try {
+      const logoPath = path.join(process.cwd(), 'public', 'preview', 'assets', 'Safeguard_Logo_Cropped.png');
+      const logoBuffer = fs.readFileSync(logoPath);
+      const logoBase64 = logoBuffer.toString('base64');
+      logoDataUrl = `data:image/png;base64,${logoBase64}`;
+    } catch (logoErr) {
+      console.warn('Failed to load logo:', logoErr.message);
+    }
+    
     // Get the deal data
     let deal;
     if (db.isPostgres) {
@@ -200,6 +211,12 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
       position: relative;
       height: 1.5in;
       margin-bottom: 0.15in;
+    }
+    .header .logo {
+      position: absolute;
+      top: -0.2in;
+      left: -0.2in;
+      height: 1in;
     }
     .header .phone {
       position: absolute;
@@ -352,6 +369,7 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
 <body>
   <div class="page">
     <header class="header">
+      ${logoDataUrl ? `<img src="${logoDataUrl}" class="logo" alt="Safeguard Logo" />` : ''}
       <div class="phone">877-280-5771</div>
       <div class="tagline">Private Lending Secured by Real Estate</div>
     </header>
