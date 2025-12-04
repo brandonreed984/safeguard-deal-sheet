@@ -14,7 +14,7 @@ dotenv.config();
 console.log('🔍 Environment check:');
 console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
 console.log('PORT:', process.env.PORT || 5000);
-console.log('db.pool exists:', !!db.pool);
+console.log('db.isPostgres:', !!db.isPostgres);
 
 const app = express();
 app.use(cors());
@@ -86,7 +86,7 @@ app.post("/api/deals", async (req, res) => {
     const data = req.body;
     console.log('📝 Creating deal:', data.loanNumber, data.address);
     
-    if (db.pool) {
+    if (db.isPostgres) {
       // PostgreSQL
       console.log('Using PostgreSQL');
       const queryText = `INSERT INTO deals (
@@ -104,7 +104,7 @@ app.post("/api/deals", async (req, res) => {
         data.int3, data.int4, data.attachedPdf
       ];
       
-      const result = await db.pool.query(queryText, queryValues);
+      const result = await db.query(queryText, queryValues);
       console.log('✅ Deal created with ID:', result.rows[0].id);
       res.json({ ok: true, id: result.rows[0].id });
     } else {
@@ -138,16 +138,16 @@ app.get("/api/deals", async (req, res) => {
     const search = req.query.search || '';
     let deals;
     
-    if (db.pool) {
+    if (db.isPostgres) {
       // PostgreSQL
       if (search) {
-        const result = await db.pool.query(
+        const result = await db.query(
           'SELECT * FROM deals WHERE address ILIKE $1 OR "loanNumber" ILIKE $2 ORDER BY "updatedAt" DESC',
           [`%${search}%`, `%${search}%`]
         );
         deals = result.rows;
       } else {
-        const result = await db.pool.query('SELECT * FROM deals ORDER BY "updatedAt" DESC');
+        const result = await db.query('SELECT * FROM deals ORDER BY "updatedAt" DESC');
         deals = result.rows;
       }
     } else {
@@ -171,9 +171,9 @@ app.get("/api/deals/:id", async (req, res) => {
   try {
     let deal;
     
-    if (db.pool) {
+    if (db.isPostgres) {
       // PostgreSQL
-      const result = await db.pool.query(
+      const result = await db.query(
         'SELECT * FROM deals WHERE id = $1',
         [req.params.id]
       );
@@ -196,9 +196,9 @@ app.put("/api/deals/:id", async (req, res) => {
   try {
     const data = req.body;
     
-    if (db.pool) {
+    if (db.isPostgres) {
       // PostgreSQL
-      await db.pool.query(
+      await db.query(
         `UPDATE deals SET
           "loanNumber"=$2, amount=$3, "rateType"=$4, term=$5, "monthlyReturn"=$6, ltv=$7,
           address=$8, appraisal=$9, rent=$10, sqft=$11, "bedsBaths"=$12, "marketLocation"=$13,
@@ -241,9 +241,9 @@ app.put("/api/deals/:id", async (req, res) => {
 // Delete a deal
 app.delete("/api/deals/:id", async (req, res) => {
   try {
-    if (db.pool) {
+    if (db.isPostgres) {
       // PostgreSQL
-      await db.pool.query(
+      await db.query(
         'DELETE FROM deals WHERE id = $1',
         [req.params.id]
       );

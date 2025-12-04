@@ -60,25 +60,9 @@ if (DATABASE_URL) {
     CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals("loanNumber");
   `);
 
-  db = {
-    pool: pool,
-    prepare: (sql) => {
-      return {
-        run: async (...params) => {
-          const result = await pool.query(sql, params);
-          return { lastInsertRowid: result.rows[0]?.id, changes: result.rowCount };
-        },
-        get: async (...params) => {
-          const result = await pool.query(sql, params);
-          return result.rows[0];
-        },
-        all: async (...params) => {
-          const result = await pool.query(sql, params);
-          return result.rows;
-        }
-      };
-    }
-  };
+  // Export the raw pool for PostgreSQL
+  db = pool;
+  db.isPostgres = true;
 
   console.log('✅ PostgreSQL Database initialized');
 } else {
