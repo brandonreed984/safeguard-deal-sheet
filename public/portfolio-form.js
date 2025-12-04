@@ -308,31 +308,14 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   }
 });
 
-// Preview PDF
-document.getElementById('previewBtn').addEventListener('click', async () => {
+// Preview Portfolio
+document.getElementById('previewBtn').addEventListener('click', () => {
   if (!currentPortfolioId) {
     alert('Please save the portfolio first');
     return;
   }
   
-  setStatus('Opening PDF preview...');
-  try {
-    const res = await fetch(`/api/generate-portfolio-pdf/${currentPortfolioId}`, { method: 'POST' });
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error(errorText || 'Failed to generate PDF');
-    }
-    
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    
-    setStatus('✅ PDF preview opened!');
-    setTimeout(() => setStatus('Ready.'), 2000);
-  } catch (err) {
-    console.error('PDF preview error:', err);
-    setStatus('Failed to preview PDF: ' + err.message, true);
-  }
+  window.open(`/portfolio-preview.html?id=${currentPortfolioId}`, '_blank');
 });
 
 // Generate & Download PDF
@@ -345,16 +328,24 @@ document.getElementById('pdfBtn').addEventListener('click', async () => {
   setStatus('Generating PDF...');
   try {
     const res = await fetch(`/api/generate-portfolio-pdf/${currentPortfolioId}`, { method: 'POST' });
+    console.log('PDF Download - Response status:', res.status);
+    
     if (!res.ok) {
       const errorText = await res.text();
+      console.error('Server error:', errorText);
       throw new Error(errorText || 'Failed to generate PDF');
     }
     
     const blob = await res.blob();
+    console.log('PDF blob received:', blob.type, blob.size, 'bytes');
     
     // Check if blob is valid
     if (blob.size === 0) {
       throw new Error('Generated PDF is empty');
+    }
+    
+    if (blob.type !== 'application/pdf') {
+      console.warn('Warning: Content type is', blob.type, 'not application/pdf');
     }
     
     const url = window.URL.createObjectURL(blob);
@@ -364,13 +355,17 @@ document.getElementById('pdfBtn').addEventListener('click', async () => {
     a.download = `Portfolio-Review-${investorName.replace(/\s+/g, '-')}.pdf`;
     document.body.appendChild(a);
     a.click();
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    
+    setTimeout(() => {
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }, 100);
     
     setStatus('✅ PDF downloaded!');
     setTimeout(() => setStatus('Ready.'), 2000);
   } catch (err) {
     console.error('PDF generation error:', err);
+    alert('Failed to generate PDF: ' + err.message);
     setStatus('Failed to generate PDF: ' + err.message, true);
   }
 });
