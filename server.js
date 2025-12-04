@@ -890,6 +890,291 @@ app.post("/api/generate-portfolio-pdf/:id", requireAuth, async (req, res) => {
   }
 });
 
+// Generate Loan Engagement Agreement PDF
+app.get("/api/deals/:id/engagement-agreement", requireAuth, async (req, res) => {
+  let browser;
+  try {
+    console.log('🔷 Generating engagement agreement for deal:', req.params.id);
+    
+    // Fetch deal data
+    let deal;
+    if (db.isPostgres) {
+      const result = await db.query('SELECT * FROM deals WHERE id = $1', [req.params.id]);
+      deal = result.rows[0];
+    } else {
+      const stmt = db.prepare('SELECT * FROM deals WHERE id = ?');
+      deal = stmt.get(req.params.id);
+    }
+    
+    if (!deal) {
+      return res.status(404).json({ error: 'Deal not found' });
+    }
+    
+    if (!deal.clientName || !deal.lendingEntity) {
+      return res.status(400).json({ 
+        error: 'Client Name and Lending Entity are required. Please edit the deal and add this information.' 
+      });
+    }
+    
+    const today = new Date().toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    // Generate HTML for engagement agreement
+    const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Loan Engagement Agreement</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+          font-family: 'Times New Roman', Times, serif;
+          font-size: 12pt;
+          line-height: 1.6;
+          color: #000;
+          padding: 40px 60px;
+        }
+        h1 {
+          text-align: center;
+          font-size: 18pt;
+          margin-bottom: 30px;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+        }
+        h2 {
+          font-size: 14pt;
+          margin-top: 25px;
+          margin-bottom: 15px;
+          text-decoration: underline;
+        }
+        p {
+          margin-bottom: 15px;
+          text-align: justify;
+        }
+        .section {
+          margin-bottom: 20px;
+        }
+        .signature-line {
+          margin-top: 50px;
+          border-top: 1px solid #000;
+          width: 300px;
+          padding-top: 5px;
+        }
+        .signature-block {
+          margin-top: 60px;
+          display: inline-block;
+          width: 45%;
+        }
+        .signature-block:last-child {
+          margin-left: 8%;
+        }
+        .info-box {
+          background: #f5f5f5;
+          border: 1px solid #ccc;
+          padding: 15px;
+          margin: 20px 0;
+        }
+        .info-row {
+          margin-bottom: 8px;
+        }
+        .info-label {
+          font-weight: bold;
+          display: inline-block;
+          width: 150px;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>Loan Engagement Agreement</h1>
+      
+      <div class="info-box">
+        <div class="info-row">
+          <span class="info-label">Date:</span>
+          <span>${today}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Loan Number:</span>
+          <span>${deal.loanNumber}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Property Address:</span>
+          <span>${deal.address}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Loan Amount:</span>
+          <span>${deal.amount}</span>
+        </div>
+      </div>
+      
+      <div class="section">
+        <p>
+          This Loan Engagement Agreement ("Agreement") is entered into as of ${today}, by and between 
+          <strong>${deal.lendingEntity}</strong> ("Lender") and <strong>${deal.clientName}</strong> ("Borrower").
+        </p>
+      </div>
+      
+      <div class="section">
+        <h2>1. Loan Terms</h2>
+        <p>
+          Lender agrees to provide Borrower with a loan in the principal amount of ${deal.amount} ("Loan Amount") 
+          for the property located at ${deal.address} ("Property"). The loan will be subject to the following terms:
+        </p>
+        <ul style="margin-left: 30px; margin-top: 10px;">
+          <li>Interest Rate/Type: ${deal.rateType || 'As agreed'}</li>
+          <li>Term: ${deal.term || 'As agreed'}</li>
+          <li>Monthly Payment: ${deal.monthlyReturn || 'As calculated'}</li>
+          <li>Loan-to-Value (LTV): ${deal.ltv || 'As appraised'}</li>
+        </ul>
+      </div>
+      
+      <div class="section">
+        <h2>2. Property Information</h2>
+        <p>
+          The loan will be secured by the Property with an appraised value of ${deal.appraisal || 'To be determined'}. 
+          ${deal.bedsBaths ? `The Property consists of ${deal.bedsBaths}.` : ''} 
+          ${deal.rent ? `The estimated monthly rental income is ${deal.rent}.` : ''}
+        </p>
+      </div>
+      
+      <div class="section">
+        <h2>3. Borrower Representations</h2>
+        <p>
+          Borrower represents and warrants that all information provided in connection with this loan application 
+          is true, accurate, and complete. Borrower agrees to provide any additional documentation reasonably 
+          requested by Lender to complete the underwriting and closing of the loan.
+        </p>
+      </div>
+      
+      <div class="section">
+        <h2>4. Conditions Precedent</h2>
+        <p>
+          This Agreement and Lender's obligation to fund the loan are subject to the following conditions:
+        </p>
+        <ul style="margin-left: 30px; margin-top: 10px;">
+          <li>Satisfactory completion of due diligence, including title review and property inspection</li>
+          <li>Execution of final loan documents acceptable to Lender</li>
+          <li>Receipt of all required third-party reports (appraisal, insurance, etc.)</li>
+          <li>No material adverse change in Borrower's financial condition or the Property</li>
+        </ul>
+      </div>
+      
+      <div class="section">
+        <h2>5. Closing</h2>
+        <p>
+          The parties agree to use commercially reasonable efforts to close the loan within a mutually agreed timeframe. 
+          The exact closing date will be determined based on the satisfaction of all conditions precedent and the 
+          availability of both parties.
+        </p>
+      </div>
+      
+      <div class="section">
+        <h2>6. Expenses</h2>
+        <p>
+          Borrower agrees to pay all reasonable costs and expenses incurred in connection with the loan, including 
+          but not limited to appraisal fees, title insurance, recording fees, and legal fees.
+        </p>
+      </div>
+      
+      <div class="section">
+        <h2>7. Non-Binding</h2>
+        <p>
+          This Agreement represents the parties' intent to proceed with the loan transaction but does not constitute 
+          a binding commitment to fund or accept the loan. The parties' obligations will become binding only upon 
+          execution of definitive loan documents.
+        </p>
+      </div>
+      
+      <div class="section">
+        <h2>8. Governing Law</h2>
+        <p>
+          This Agreement shall be governed by and construed in accordance with the laws of the jurisdiction where 
+          the Property is located.
+        </p>
+      </div>
+      
+      <div style="margin-top: 80px;">
+        <div class="signature-block">
+          <div class="signature-line"></div>
+          <div style="margin-top: 5px;">
+            <strong>${deal.lendingEntity}</strong><br>
+            By: _______________________<br>
+            Name:<br>
+            Title:<br>
+            Date:
+          </div>
+        </div>
+        
+        <div class="signature-block">
+          <div class="signature-line"></div>
+          <div style="margin-top: 5px;">
+            <strong>${deal.clientName}</strong><br>
+            Borrower<br><br><br>
+            Date:
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
+    
+    console.log('Launching Puppeteer for engagement agreement...');
+    browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu'
+      ]
+    });
+    
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    
+    const pdfBuffer = await page.pdf({
+      format: 'Letter',
+      printBackground: true,
+      margin: { top: '0.75in', right: '0.75in', bottom: '0.75in', left: '0.75in' }
+    });
+    
+    await browser.close();
+    
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      throw new Error('Generated PDF is empty');
+    }
+    
+    const filename = `Engagement-Agreement-${deal.loanNumber}-${deal.clientName.replace(/\s+/g, '-')}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Length', pdfBuffer.length.toString());
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.end(pdfBuffer, 'binary');
+    
+    console.log('✅ Engagement agreement PDF sent successfully:', pdfBuffer.length, 'bytes');
+    
+  } catch (err) {
+    console.error('❌ Engagement agreement PDF generation error:', err.message);
+    console.error('Stack trace:', err.stack);
+    
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (closeErr) {
+        console.error('Error closing browser:', closeErr.message);
+      }
+    }
+    
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+});
+
 // === Database Endpoints ===
 
 // Create or update a deal
@@ -905,15 +1190,15 @@ app.post("/api/deals", requireAuth, async (req, res) => {
         "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
         address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
         "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
-        "int3Image", "int4Image", "attachedPdf"
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+        "int3Image", "int4Image", "attachedPdf", "clientName", "lendingEntity"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
       RETURNING id`;
       
       const queryValues = [
         data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
         data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
         data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-        data.int3, data.int4, data.attachedPdf
+        data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity
       ];
       
       const result = await db.query(queryText, queryValues);
@@ -925,15 +1210,15 @@ app.post("/api/deals", requireAuth, async (req, res) => {
         data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
         data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
         data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-        data.int3, data.int4, data.attachedPdf
+        data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity
       ];
       const stmt = db.prepare(`
         INSERT INTO deals (
           loanNumber, amount, rateType, term, monthlyReturn, ltv,
           address, appraisal, rent, sqft, bedsBaths, marketLocation,
           marketOverview, dealInformation, heroImage, int1Image, int2Image,
-          int3Image, int4Image, attachedPdf
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          int3Image, int4Image, attachedPdf, clientName, lendingEntity
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const result = stmt.run(...values);
       res.json({ ok: true, id: result.lastInsertRowid });
@@ -1018,14 +1303,14 @@ app.put("/api/deals/:id", requireAuth, async (req, res) => {
           "loanNumber"=$2, amount=$3, "rateType"=$4, term=$5, "monthlyReturn"=$6, ltv=$7,
           address=$8, appraisal=$9, rent=$10, sqft=$11, "bedsBaths"=$12, "marketLocation"=$13,
           "marketOverview"=$14, "dealInformation"=$15, "heroImage"=$16, "int1Image"=$17, "int2Image"=$18,
-          "int3Image"=$19, "int4Image"=$20, "attachedPdf"=$21, "updatedAt"=CURRENT_TIMESTAMP
+          "int3Image"=$19, "int4Image"=$20, "attachedPdf"=$21, "clientName"=$22, "lendingEntity"=$23, "updatedAt"=CURRENT_TIMESTAMP
         WHERE id = $1`,
         [
           req.params.id,
           data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
           data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
           data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-          data.int3, data.int4, data.attachedPdf
+          data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity
         ]
       );
     } else {
@@ -1034,14 +1319,14 @@ app.put("/api/deals/:id", requireAuth, async (req, res) => {
         data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
         data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
         data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-        data.int3, data.int4, data.attachedPdf, req.params.id
+        data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity, req.params.id
       ];
       const stmt = db.prepare(`
         UPDATE deals SET
           loanNumber=?, amount=?, rateType=?, term=?, monthlyReturn=?, ltv=?,
           address=?, appraisal=?, rent=?, sqft=?, bedsBaths=?, marketLocation=?,
           marketOverview=?, dealInformation=?, heroImage=?, int1Image=?, int2Image=?,
-          int3Image=?, int4Image=?, attachedPdf=?, updatedAt=CURRENT_TIMESTAMP
+          int3Image=?, int4Image=?, attachedPdf=?, clientName=?, lendingEntity=?, updatedAt=CURRENT_TIMESTAMP
         WHERE id = ?
       `);
       stmt.run(...values);

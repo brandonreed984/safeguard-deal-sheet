@@ -70,6 +70,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       document.querySelector('input[name="marketLocation"]').value = deal.marketLocation || '';
       document.querySelector('textarea[name="marketOverview"]').value = deal.marketOverview || '';
       document.querySelector('textarea[name="dealInformation"]').value = deal.dealInformation || '';
+      document.querySelector('input[name="clientName"]').value = deal.clientName || '';
+      document.querySelector('input[name="lendingEntity"]').value = deal.lendingEntity || '';
       
       // Load images as thumbnails if they exist
       ['hero', 'int1', 'int2', 'int3', 'int4'].forEach(name => {
@@ -564,6 +566,55 @@ document.getElementById('pdfBtn').addEventListener('click', async () => {
     setStatus('Failed to prepare PDF: ' + (err.message || err), true);
   }
 });
+
+// Generate Engagement Agreement Button
+const engagementBtn = document.getElementById('engagementBtn');
+if (engagementBtn) {
+  engagementBtn.addEventListener('click', async () => {
+    if (!currentDealId) {
+      alert('Please save the deal first before generating an engagement agreement.');
+      return;
+    }
+    
+    const clientName = document.querySelector('input[name="clientName"]').value;
+    const lendingEntity = document.querySelector('input[name="lendingEntity"]').value;
+    
+    if (!clientName || !lendingEntity) {
+      alert('Please fill in Client Name and Lending Entity fields before generating the engagement agreement.');
+      return;
+    }
+    
+    setStatus('Generating engagement agreement PDF...');
+    
+    try {
+      const res = await fetch(`/api/deals/${currentDealId}/engagement-agreement`, {
+        credentials: 'include'
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to generate engagement agreement');
+      }
+      
+      // Download the PDF
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `Engagement-Agreement-${document.querySelector('input[name="loanNumber"]').value}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      setStatus('✅ Engagement agreement PDF downloaded successfully!');
+    } catch (err) {
+      console.error('Engagement agreement error:', err);
+      setStatus('Failed to generate engagement agreement: ' + err.message, true);
+    }
+  });
+}
 
 // Logout functionality
 const logoutBtn = document.getElementById('logoutBtn');

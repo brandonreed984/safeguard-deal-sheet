@@ -73,6 +73,42 @@ if (DATABASE_URL) {
       console.log('Deals archived column migration skipped:', err.message);
     }
 
+    // Add clientName column if it doesn't exist (migration for engagement agreements)
+    try {
+      const checkCol = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='deals' AND column_name='clientName'
+      `);
+      
+      if (checkCol.rows.length === 0) {
+        await pool.query(`ALTER TABLE deals ADD COLUMN "clientName" TEXT`);
+        console.log('✅ Deals table migration: clientName column added');
+      } else {
+        console.log('✅ Deals table: clientName column already exists');
+      }
+    } catch (err) {
+      console.log('Deals clientName column migration skipped:', err.message);
+    }
+
+    // Add lendingEntity column if it doesn't exist (migration for engagement agreements)
+    try {
+      const checkCol = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='deals' AND column_name='lendingEntity'
+      `);
+      
+      if (checkCol.rows.length === 0) {
+        await pool.query(`ALTER TABLE deals ADD COLUMN "lendingEntity" TEXT`);
+        console.log('✅ Deals table migration: lendingEntity column added');
+      } else {
+        console.log('✅ Deals table: lendingEntity column already exists');
+      }
+    } catch (err) {
+      console.log('Deals lendingEntity column migration skipped:', err.message);
+    }
+
     // Create indexes after column migration
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_address ON deals(address);
@@ -163,6 +199,8 @@ if (DATABASE_URL) {
       int4Image TEXT,
       attachedPdf TEXT,
       pdfPath TEXT,
+      clientName TEXT,
+      lendingEntity TEXT,
       archived INTEGER DEFAULT 0,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
