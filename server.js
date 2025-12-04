@@ -138,18 +138,19 @@ app.put("/api/deals/:id", async (req, res) => {
     const data = req.body;
     const stmt = db.prepare(`
       UPDATE deals SET
-        "loanNumber"=$1, amount=$2, "rateType"=$3, term=$4, "monthlyReturn"=$5, ltv=$6,
-        address=$7, appraisal=$8, rent=$9, sqft=$10, "bedsBaths"=$11, "marketLocation"=$12,
-        "marketOverview"=$13, "dealInformation"=$14, "heroImage"=$15, "int1Image"=$16, "int2Image"=$17,
-        "int3Image"=$18, "int4Image"=$19, "attachedPdf"=$20, "updatedAt"=CURRENT_TIMESTAMP
-      WHERE id = $21
+        "loanNumber"=$2, amount=$3, "rateType"=$4, term=$5, "monthlyReturn"=$6, ltv=$7,
+        address=$8, appraisal=$9, rent=$10, sqft=$11, "bedsBaths"=$12, "marketLocation"=$13,
+        "marketOverview"=$14, "dealInformation"=$15, "heroImage"=$16, "int1Image"=$17, "int2Image"=$18,
+        "int3Image"=$19, "int4Image"=$20, "attachedPdf"=$21, "updatedAt"=CURRENT_TIMESTAMP
+      WHERE id = $1
     `);
     
     await stmt.run(
+      req.params.id,
       data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
       data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
       data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-      data.int3, data.int4, data.attachedPdf, req.params.id
+      data.int3, data.int4, data.attachedPdf
     );
     
     res.json({ ok: true });
