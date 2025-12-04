@@ -24,7 +24,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (editId) {
     try {
       setStatus('Loading portfolio...');
-      const res = await fetch(`/api/portfolios/${editId}`);
+      const res = await fetch(`/api/portfolios/${editId}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to load portfolio');
       
       const portfolio = await res.json();
@@ -292,6 +292,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data)
     });
     
@@ -336,7 +337,10 @@ document.getElementById('pdfBtn').addEventListener('click', async () => {
   
   setStatus('Generating PDF...');
   try {
-    const res = await fetch(`/api/generate-portfolio-pdf/${currentPortfolioId}`, { method: 'POST' });
+    const res = await fetch(`/api/generate-portfolio-pdf/${currentPortfolioId}`, { 
+      method: 'POST',
+      credentials: 'include'
+    });
     console.log('PDF Download - Response status:', res.status);
     
     if (!res.ok) {

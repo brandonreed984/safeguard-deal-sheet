@@ -155,7 +155,7 @@
     async function loadPortfolios(search = '') {
       try {
         const url = search ? `/api/portfolios?search=${encodeURIComponent(search)}` : '/api/portfolios';
-        const res = await fetch(url);
+        const res = await fetch(url, { credentials: 'include' });
         allPortfolios = await res.json();
         renderPortfolios();
       } catch (err) {
@@ -224,7 +224,10 @@
           buttonElement.disabled = true;
         }
         
-        const res = await fetch(`/api/generate-portfolio-pdf/${id}`, { method: 'POST' });
+        const res = await fetch(`/api/generate-portfolio-pdf/${id}`, { 
+          method: 'POST',
+          credentials: 'include'
+        });
         if (!res.ok) {
           const errorData = await res.json();
           throw new Error(errorData.error || 'Failed to generate PDF');
@@ -257,7 +260,10 @@
     async function deletePortfolio(id) {
       if (!confirm('Are you sure you want to delete this portfolio review?')) return;
       try {
-        await fetch(`/api/portfolios/${id}`, { method: 'DELETE' });
+        await fetch(`/api/portfolios/${id}`, { 
+          method: 'DELETE',
+          credentials: 'include'
+        });
         loadPortfolios(searchInput.value);
       } catch (err) {
         alert('Failed to delete portfolio: ' + err.message);

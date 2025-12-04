@@ -50,7 +50,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (editId) {
     try {
       setStatus('Loading deal...');
-      const res = await fetch(`/api/deals/${editId}`);
+      const res = await fetch(`/api/deals/${editId}`, { credentials: 'include' });
       const deal = await res.json();
       currentDealId = deal.id;
       existingDealData = deal; // Store for later use
@@ -424,7 +424,7 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
     
     // Reload the deal data to show saved PDFs
     if (currentDealId) {
-      const reloadRes = await fetch(`/api/deals/${currentDealId}`);
+      const reloadRes = await fetch(`/api/deals/${currentDealId}`, { credentials: 'include' });
       const reloadedDeal = await reloadRes.json();
       existingDealData = reloadedDeal;
       
@@ -466,6 +466,7 @@ document.getElementById('previewBtn').addEventListener('click', async () => {
       const res = await fetch(`/api/deals/${currentDealId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data)
       });
       if (!res.ok) {
@@ -473,7 +474,7 @@ document.getElementById('previewBtn').addEventListener('click', async () => {
       }
       
       // Reload the deal data after save to update existingDealData
-      const reloadRes = await fetch(`/api/deals/${currentDealId}`);
+      const reloadRes = await fetch(`/api/deals/${currentDealId}`, { credentials: 'include' });
       if (reloadRes.ok) {
         const reloadedDeal = await reloadRes.json();
         existingDealData = reloadedDeal;
@@ -532,6 +533,7 @@ document.getElementById('pdfBtn').addEventListener('click', async () => {
       const res = await fetch('/api/deals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data)
       });
       if (!res.ok) throw new Error('Failed to save deal');
@@ -544,6 +546,7 @@ document.getElementById('pdfBtn').addEventListener('click', async () => {
       const res = await fetch(`/api/deals/${dealId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(data)
       });
       if (!res.ok) throw new Error('Failed to update deal');
