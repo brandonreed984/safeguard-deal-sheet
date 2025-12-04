@@ -337,37 +337,61 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
     // Merge attached PDFs if any
     if (deal.attachedPdf) {
       try {
-        console.log('Attached PDF data exists, length:', deal.attachedPdf.length);
+        console.log('📎 Attached PDF data exists, length:', deal.attachedPdf.length);
+        console.log('📎 First 100 chars:', deal.attachedPdf.substring(0, 100));
+        
         const attachedPdfs = JSON.parse(deal.attachedPdf);
-        console.log('Parsed attached PDFs array, count:', attachedPdfs.length);
+        console.log('📎 Parsed attached PDFs array, count:', attachedPdfs.length);
+        console.log('📎 Array check:', Array.isArray(attachedPdfs));
         
         if (Array.isArray(attachedPdfs) && attachedPdfs.length > 0) {
           for (let i = 0; i < attachedPdfs.length; i++) {
             const pdfDataUrl = attachedPdfs[i];
-            console.log(`Processing attached PDF ${i + 1}/${attachedPdfs.length}`);
+            console.log(`📎 Processing attached PDF ${i + 1}/${attachedPdfs.length}`);
+            console.log(`📎 Data URL starts with:`, pdfDataUrl.substring(0, 50));
             
             // Extract base64 data from data URL
-            const base64Data = pdfDataUrl.split(',')[1];
-            if (!base64Data) {
-              console.warn(`PDF ${i + 1} has no base64 data, skipping`);
-              continue;
+            const splitIndex = pdfDataUrl.indexOf(',');
+            console.log(`📎 Split index:`, splitIndex);
+            
+            if (splitIndex === -1) {
+              console.error(`❌ PDF ${i + 1} has invalid data URL format (no comma found)`);
+              throw new Error('Failed to merge attached PDF. Only the main PDF will be uploaded.');
             }
             
+            const base64Data = pdfDataUrl.substring(splitIndex + 1);
+            console.log(`📎 Base64 data length:`, base64Data.length);
+            console.log(`📎 Base64 first 50 chars:`, base64Data.substring(0, 50));
+            
+            if (!base64Data || base64Data.length === 0) {
+              console.error(`❌ PDF ${i + 1} has no base64 data`);
+              throw new Error('Failed to merge attached PDF. Only the main PDF will be uploaded.');
+            }
+            
+            console.log(`📎 Creating buffer from base64...`);
             const pdfBytes = Buffer.from(base64Data, 'base64');
+            console.log(`📎 Buffer created, size:`, pdfBytes.length, 'bytes');
+            
+            console.log(`📎 Loading PDF document...`);
             const attachedDoc = await PDFDocument.load(pdfBytes);
+            console.log(`📎 PDF loaded successfully, pages:`, attachedDoc.getPageCount());
+            
+            console.log(`📎 Copying pages to merged document...`);
             const attachedPages = await pdfDoc.copyPages(attachedDoc, attachedDoc.getPageIndices());
             attachedPages.forEach(page => pdfDoc.addPage(page));
-            console.log(`Successfully merged PDF ${i + 1} (${attachedPages.length} pages)`);
+            console.log(`✅ Successfully merged PDF ${i + 1} (${attachedPages.length} pages)`);
           }
         } else {
-          console.log('No PDFs to merge or not an array');
+          console.log('⚠️ No PDFs to merge or not an array');
         }
       } catch (e) {
-        console.error('Error merging attached PDFs:', e.message);
-        console.error('Stack:', e.stack);
+        console.error('❌ Error merging attached PDFs:', e.message);
+        console.error('❌ Error name:', e.name);
+        console.error('❌ Stack:', e.stack);
+        throw e; // Re-throw to be caught by outer try-catch
       }
     } else {
-      console.log('No attached PDFs in deal data');
+      console.log('ℹ️ No attached PDFs in deal data');
     }
     
     // Save the merged PDF
