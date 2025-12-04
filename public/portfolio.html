@@ -128,6 +128,48 @@
     .btn-danger:hover {
       background: #c82333;
     }
+    .btn-warning {
+      background: #ffc107;
+      color: #333;
+    }
+    .btn-warning:hover {
+      background: #e0a800;
+    }
+    .btn-success {
+      background: #28a745;
+    }
+    .btn-success:hover {
+      background: #218838;
+    }
+    .tabs {
+      max-width: 1200px;
+      margin: 0 auto 20px;
+      display: flex;
+      gap: 2px;
+      background: #e0e0e0;
+      border-radius: 8px;
+      padding: 4px;
+    }
+    .tab {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-weight: 600;
+      border-radius: 6px;
+      transition: all 0.3s;
+      color: #666;
+    }
+    .tab:hover {
+      background: rgba(30, 102, 180, 0.1);
+      color: #1E66B4;
+    }
+    .tab.active {
+      background: white;
+      color: #1E66B4;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
@@ -141,6 +183,11 @@
     </div>
   </div>
 
+  <div class="tabs">
+    <button class="tab active" data-tab="active">Active Portfolios</button>
+    <button class="tab" data-tab="archived">Archived</button>
+  </div>
+
   <div id="portfoliosContainer" class="portfolios-container">
     <div class="empty-state">
       <h2>Loading portfolio reviews...</h2>
@@ -151,10 +198,14 @@
     const container = document.getElementById('portfoliosContainer');
     const searchInput = document.getElementById('searchInput');
     let allPortfolios = [];
+    let currentTab = 'active';
 
     async function loadPortfolios(search = '') {
       try {
-        const url = search ? `/api/portfolios?search=${encodeURIComponent(search)}` : '/api/portfolios';
+        const archived = currentTab === 'archived';
+        const url = search 
+          ? `/api/portfolios?search=${encodeURIComponent(search)}&archived=${archived}` 
+          : `/api/portfolios?archived=${archived}`;
         const res = await fetch(url, { credentials: 'include' });
         allPortfolios = await res.json();
         renderPortfolios();
@@ -203,6 +254,10 @@
                   <div class="portfolio-actions">
                     <button class="btn btn-primary btn-small" onclick="viewPortfolio(${portfolio.id})">View/Edit</button>
                     <button class="btn btn-secondary btn-small" onclick="generatePDF(${portfolio.id}, this)">Generate PDF</button>
+                    ${currentTab === 'active' 
+                      ? `<button class="btn btn-warning btn-small" onclick="archivePortfolio(${portfolio.id})">Archive</button>`
+                      : `<button class="btn btn-success btn-small" onclick="unarchivePortfolio(${portfolio.id})">Unarchive</button>`
+                    }
                     <button class="btn btn-danger btn-small" onclick="deletePortfolio(${portfolio.id})">Delete</button>
                   </div>
                 </td>
@@ -277,6 +332,46 @@
       searchTimeout = setTimeout(() => {
         loadPortfolios(e.target.value);
       }, 300);
+    });
+
+    async function archivePortfolio(id) {
+      if (!confirm('Archive this portfolio?')) return;
+      try {
+        await fetch(`/api/portfolios/${id}/archive`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ archived: true })
+        });
+        loadPortfolios(searchInput.value);
+      } catch (err) {
+        alert('Failed to archive portfolio: ' + err.message);
+      }
+    }
+
+    async function unarchivePortfolio(id) {
+      try {
+        await fetch(`/api/portfolios/${id}/archive`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ archived: false })
+        });
+        loadPortfolios(searchInput.value);
+      } catch (err) {
+        alert('Failed to unarchive portfolio: ' + err.message);
+      }
+    }
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', (e) => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        e.target.classList.add('active');
+        currentTab = e.target.dataset.tab;
+        searchInput.value = '';
+        loadPortfolios();
+      });
     });
 
     // Initial load

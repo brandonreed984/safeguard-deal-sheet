@@ -945,31 +945,32 @@ app.post("/api/deals", requireAuth, async (req, res) => {
   }
 });
 
-// Get all deals (searchable by address)
+// Get all deals (searchable by address, filterable by archived status)
 app.get("/api/deals", requireAuth, async (req, res) => {
   try {
     const search = req.query.search || '';
+    const archived = req.query.archived === 'true';
     let deals;
     
     if (db.isPostgres) {
       // PostgreSQL
       if (search) {
         const result = await db.query(
-          'SELECT * FROM deals WHERE address ILIKE $1 OR "loanNumber" ILIKE $2 ORDER BY "updatedAt" DESC',
-          [`%${search}%`, `%${search}%`]
+          'SELECT * FROM deals WHERE (address ILIKE $1 OR "loanNumber" ILIKE $2) AND archived = $3 ORDER BY "updatedAt" DESC',
+          [`%${search}%`, `%${search}%`, archived]
         );
         deals = result.rows;
       } else {
-        const result = await db.query('SELECT * FROM deals ORDER BY "updatedAt" DESC');
+        const result = await db.query('SELECT * FROM deals WHERE archived = $1 ORDER BY "updatedAt" DESC', [archived]);
         deals = result.rows;
       }
     } else {
       // SQLite
       if (search) {
-        const stmt = db.prepare('SELECT * FROM deals WHERE address LIKE ? OR loanNumber LIKE ? ORDER BY updatedAt DESC');
-        deals = stmt.all(`%${search}%`, `%${search}%`);
+        const stmt = db.prepare('SELECT * FROM deals WHERE (address LIKE ? OR loanNumber LIKE ?) AND archived = ? ORDER BY updatedAt DESC');
+        deals = stmt.all(`%${search}%`, `%${search}%`, archived ? 1 : 0);
       } else {
-        deals = db.prepare('SELECT * FROM deals ORDER BY updatedAt DESC').all();
+        deals = db.prepare('SELECT * FROM deals WHERE archived = ? ORDER BY updatedAt DESC').all(archived ? 1 : 0);
       }
     }
     res.json(deals);
@@ -1073,30 +1074,53 @@ app.delete("/api/deals/:id", requireAuth, async (req, res) => {
   }
 });
 
+// Archive/Unarchive a deal
+app.patch("/api/deals/:id/archive", requireAuth, async (req, res) => {
+  try {
+    const { archived } = req.body;
+    
+    if (db.isPostgres) {
+      await db.query(
+        'UPDATE deals SET archived = $1, "updatedAt" = CURRENT_TIMESTAMP WHERE id = $2',
+        [archived, req.params.id]
+      );
+    } else {
+      db.prepare('UPDATE deals SET archived = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(archived ? 1 : 0, req.params.id);
+    }
+    
+    res.json({ ok: true, archived });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ============================
 // Portfolio Review API Routes
 // ============================
 
-// Get all portfolios
+// Get all portfolios (filterable by archived status)
 app.get("/api/portfolios", requireAuth, async (req, res) => {
   try {
     const search = req.query.search || '';
+    const archived = req.query.archived === 'true';
     
     if (db.isPostgres) {
       const result = await db.query(
         `SELECT * FROM portfolio_reviews 
-         WHERE "investorName" ILIKE $1 
+         WHERE "investorName" ILIKE $1 AND archived = $2
          ORDER BY "updatedAt" DESC`,
-        [`%${search}%`]
+        [`%${search}%`, archived]
       );
       res.json(result.rows);
     } else {
       const stmt = db.prepare(
         `SELECT * FROM portfolio_reviews 
-         WHERE investorName LIKE ? 
+         WHERE investorName LIKE ? AND archived = ?
          ORDER BY updatedAt DESC`
       );
-      const portfolios = stmt.all(`%${search}%`);
+      const portfolios = stmt.all(`%${search}%`, archived ? 1 : 0);
       res.json(portfolios);
     }
   } catch (e) {
@@ -1200,6 +1224,28 @@ app.put("/api/portfolios/:id", requireAuth, async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error('Error updating portfolio:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Archive/Unarchive a portfolio
+app.patch("/api/portfolios/:id/archive", requireAuth, async (req, res) => {
+  try {
+    const { archived } = req.body;
+    
+    if (db.isPostgres) {
+      await db.query(
+        'UPDATE portfolio_reviews SET archived = $1, "updatedAt" = CURRENT_TIMESTAMP WHERE id = $2',
+        [archived, req.params.id]
+      );
+    } else {
+      db.prepare('UPDATE portfolio_reviews SET archived = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?')
+        .run(archived ? 1 : 0, req.params.id);
+    }
+    
+    res.json({ ok: true, archived });
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ error: e.message });
   }
 });

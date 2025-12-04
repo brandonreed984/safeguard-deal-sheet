@@ -50,12 +50,14 @@ if (DATABASE_URL) {
         "int4Image" TEXT,
         "attachedPdf" TEXT,
         "pdfPath" TEXT,
+        archived BOOLEAN DEFAULT FALSE,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       
       CREATE INDEX IF NOT EXISTS idx_address ON deals(address);
       CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals("loanNumber");
+      CREATE INDEX IF NOT EXISTS idx_archived ON deals(archived);
     `);
 
     // Create portfolio_reviews table
@@ -68,11 +70,13 @@ if (DATABASE_URL) {
         "currentInvestmentTotal" DECIMAL(15,2),
         "lifetimeInvestmentTotal" DECIMAL(15,2),
         "lifetimeInterestPaid" DECIMAL(15,2),
+        archived BOOLEAN DEFAULT FALSE,
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       
       CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews("investorName");
+      CREATE INDEX IF NOT EXISTS idx_portfolio_archived ON portfolio_reviews(archived);
     `);
     console.log('✅ portfolio_reviews table ready');
 
@@ -93,8 +97,6 @@ if (DATABASE_URL) {
   
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  
-  const sqlite = new Database(path.join(__dirname, 'deals.db'));
   
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS deals (
@@ -120,14 +122,16 @@ if (DATABASE_URL) {
       int4Image TEXT,
       attachedPdf TEXT,
       pdfPath TEXT,
+      archived INTEGER DEFAULT 0,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     
     CREATE INDEX IF NOT EXISTS idx_address ON deals(address);
     CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals(loanNumber);
-  `);
-
+    CREATE INDEX IF NOT EXISTS idx_archived ON deals(archived);
+  `);REATE INDEX IF NOT EXISTS idx_address ON deals(address);
+    CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals(loanNumber);
   // Create portfolio_reviews table for SQLite
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS portfolio_reviews (
@@ -137,10 +141,14 @@ if (DATABASE_URL) {
       currentInvestmentTotal REAL,
       lifetimeInvestmentTotal REAL,
       lifetimeInterestPaid REAL,
+      archived INTEGER DEFAULT 0,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
     
+    CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews(investorName);
+    CREATE INDEX IF NOT EXISTS idx_portfolio_archived ON portfolio_reviews(archived);
+  `);
     CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews(investorName);
   `);
   
