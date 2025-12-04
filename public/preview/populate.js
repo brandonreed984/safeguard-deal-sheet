@@ -92,10 +92,16 @@
       photoMap.forEach(([key, selector]) => {
         // Check both key and keyImage (database format)
         const url = data[key] || data[key + 'Image'];
-        if (!url) return;
+        if (!url) {
+          console.log(`No image found for ${key}, checked:`, key, key + 'Image');
+          return;
+        }
         const el = document.querySelector(selector);
-        if (!el) return;
-        el.style.backgroundImage = `url(${url})`;
+        if (!el) {
+          console.log(`No element found for selector: ${selector}`);
+          return;
+        }
+        el.style.backgroundImage = `url("${url}")`;
         el.style.backgroundSize = 'cover';
         el.style.backgroundPosition = 'center';
         // remove placeholder text

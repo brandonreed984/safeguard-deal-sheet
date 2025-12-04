@@ -305,8 +305,12 @@ async function collectFormData() {
       }
     }
   }
+  // Always include attachedPdf if we have any (existing or new)
   if (pdfDataUrls.length > 0) {
     data.attachedPdf = JSON.stringify(pdfDataUrls);
+  } else if (existingDealData && existingDealData.attachedPdf) {
+    // Preserve existing even if no new ones
+    data.attachedPdf = existingDealData.attachedPdf;
   }
 
   return data;
@@ -317,6 +321,13 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   setStatus('Saving deal...');
   try {
     const data = await collectFormData();
+    
+    // Debug logging
+    console.log('Saving data:', {
+      hasImages: !!(data.hero || data.int1 || data.int2 || data.int3 || data.int4),
+      hasPdfs: !!data.attachedPdf,
+      pdfCount: data.attachedPdf ? JSON.parse(data.attachedPdf).length : 0
+    });
     
     const method = currentDealId ? 'PUT' : 'POST';
     const url = currentDealId ? `/api/deals/${currentDealId}` : '/api/deals';

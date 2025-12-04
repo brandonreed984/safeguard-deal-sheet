@@ -343,6 +343,16 @@ app.post("/api/deals", async (req, res) => {
   try {
     const data = req.body;
     console.log('📝 Creating deal:', data.loanNumber, data.address);
+    console.log('  - Has images:', !!(data.hero || data.int1 || data.int2 || data.int3 || data.int4));
+    console.log('  - Has PDFs:', !!data.attachedPdf);
+    if (data.attachedPdf) {
+      try {
+        const pdfs = JSON.parse(data.attachedPdf);
+        console.log('  - PDF count:', pdfs.length);
+      } catch(e) {
+        console.log('  - PDF parse error:', e.message);
+      }
+    }
     
     if (db.isPostgres) {
       // PostgreSQL
@@ -454,6 +464,17 @@ app.get("/api/deals/:id", async (req, res) => {
 app.put("/api/deals/:id", async (req, res) => {
   try {
     const data = req.body;
+    console.log('📝 Updating deal:', req.params.id);
+    console.log('  - Has images:', !!(data.hero || data.int1 || data.int2 || data.int3 || data.int4));
+    console.log('  - Has PDFs:', !!data.attachedPdf);
+    if (data.attachedPdf) {
+      try {
+        const pdfs = JSON.parse(data.attachedPdf);
+        console.log('  - PDF count:', pdfs.length);
+      } catch(e) {
+        console.log('  - PDF parse error:', e.message);
+      }
+    }
     
     if (db.isPostgres) {
       // PostgreSQL
