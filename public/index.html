@@ -55,61 +55,62 @@
       font-size: 14px;
     }
     .deals-container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-      gap: 20px;
-    }
-    .deal-card {
       background: white;
       border-radius: 8px;
-      padding: 20px;
+      overflow: hidden;
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      transition: box-shadow 0.2s;
     }
-    .deal-card:hover {
-      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    .deals-table {
+      width: 100%;
+      border-collapse: collapse;
     }
-    .deal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: start;
-      margin-bottom: 15px;
-      padding-bottom: 15px;
-      border-bottom: 2px solid #1E66B4;
+    .deals-table thead {
+      background: #1E66B4;
+      color: white;
+    }
+    .deals-table th {
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .deals-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
+    }
+    .deals-table tbody tr {
+      transition: background 0.15s;
+    }
+    .deals-table tbody tr:hover {
+      background: #f8f9fa;
     }
     .loan-number {
-      font-size: 18px;
       font-weight: 700;
       color: #1E66B4;
-    }
-    .deal-info {
-      margin-bottom: 10px;
-    }
-    .deal-label {
-      font-weight: 600;
-      color: #555;
-      font-size: 12px;
-      text-transform: uppercase;
-    }
-    .deal-value {
-      font-size: 16px;
-      color: #333;
-      margin-bottom: 8px;
+      font-size: 15px;
     }
     .deal-address {
-      font-size: 18px;
       font-weight: 600;
       color: #333;
-      margin-bottom: 12px;
+      max-width: 280px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .deal-amount {
+      font-weight: 700;
+      color: #28a745;
+      font-size: 15px;
     }
     .deal-actions {
       display: flex;
-      gap: 8px;
-      margin-top: 15px;
-      padding-top: 15px;
-      border-top: 1px solid #eee;
+      gap: 6px;
+      flex-wrap: nowrap;
     }
     .empty-state {
       text-align: center;
@@ -169,41 +170,42 @@
         return;
       }
 
-      container.innerHTML = allDeals.map(deal => `
-        <div class="deal-card">
-          <div class="deal-header">
-            <div class="loan-number">Loan #${deal.loanNumber}</div>
-            <div style="font-size: 20px; font-weight: 700; color: #1E66B4;">${deal.amount || 'N/A'}</div>
-          </div>
-          
-          <div class="deal-address">${deal.address}</div>
-          
-          <div class="deal-info">
-            <div class="deal-label">Rate / Type</div>
-            <div class="deal-value">${deal.rateType || 'N/A'}</div>
-          </div>
-          
-          <div class="deal-info">
-            <div class="deal-label">Term</div>
-            <div class="deal-value">${deal.term || 'N/A'}</div>
-          </div>
-          
-          <div class="deal-info">
-            <div class="deal-label">LTV</div>
-            <div class="deal-value">${deal.ltv || 'N/A'}</div>
-          </div>
-
-          <div class="timestamp">
-            Updated: ${new Date(deal.updatedAt).toLocaleDateString()}
-          </div>
-          
-          <div class="deal-actions">
-            <button class="btn btn-primary btn-small" onclick="viewDeal(${deal.id})">View/Edit</button>
-            <button class="btn btn-secondary btn-small" onclick="generatePDF(${deal.id}, this)">Generate PDF</button>
-            <button class="btn btn-danger btn-small" onclick="deleteDeal(${deal.id})">Delete</button>
-          </div>
-        </div>
-      `).join('');
+      container.innerHTML = `
+        <table class="deals-table">
+          <thead>
+            <tr>
+              <th>Loan #</th>
+              <th>Address</th>
+              <th>Amount</th>
+              <th>Rate/Type</th>
+              <th>Term</th>
+              <th>LTV</th>
+              <th>Updated</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${allDeals.map(deal => `
+              <tr>
+                <td><span class="loan-number">#${deal.loanNumber}</span></td>
+                <td><div class="deal-address" title="${deal.address}">${deal.address}</div></td>
+                <td><span class="deal-amount">${deal.amount || 'N/A'}</span></td>
+                <td>${deal.rateType || 'N/A'}</td>
+                <td>${deal.term || 'N/A'}</td>
+                <td>${deal.ltv || 'N/A'}</td>
+                <td style="color:#999;font-size:13px;">${new Date(deal.updatedAt).toLocaleDateString()}</td>
+                <td>
+                  <div class="deal-actions">
+                    <button class="btn btn-primary btn-small" onclick="viewDeal(${deal.id})">View/Edit</button>
+                    <button class="btn btn-secondary btn-small" onclick="generatePDF(${deal.id}, this)">Generate PDF</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteDeal(${deal.id})">Delete</button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
     }
 
     function viewDeal(id) {
