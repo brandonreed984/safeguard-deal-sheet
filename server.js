@@ -167,160 +167,248 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
     
     const page = await browser.newPage();
     
-    // Build HTML for the deal sheet with proper styling
+    // Build HTML for the deal sheet matching the preview page layout
     const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <style>
+    :root {
+      --blue: #1E66B4;
+      --muted: #3C3C3C;
+      --card: #F2F5F8;
+      --stroke: #D2D2D2;
+      --text: #141414;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { 
-      font-family: Arial, Helvetica, sans-serif; 
-      padding: 48px;
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
       background: white;
-      color: #141414;
     }
+    .page {
+      width: 8.5in;
+      height: 11in;
+      padding: 0.5in;
+      background: #FFFFFF;
+      position: relative;
+    }
+    
+    /* Header */
     .header {
+      position: relative;
+      height: 1.5in;
+      margin-bottom: 0.15in;
+    }
+    .header .phone {
+      position: absolute;
+      top: 0.2in;
+      right: 0.2in;
+      font-size: 18pt;
+      color: var(--blue);
+      font-weight: 700;
+    }
+    .header .tagline {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      top: 1.1in;
+      font-weight: 700;
+      color: var(--text);
+      font-size: 18pt;
+      white-space: nowrap;
+    }
+    
+    /* Body grid */
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 0.2in;
+    }
+    
+    /* Left side - photos */
+    .left .hero {
+      height: 2.8in;
+      background: #F5F5F5;
+      border: 2px solid var(--stroke);
+      border-radius: 14px;
+      background-size: cover;
+      background-position: center;
+    }
+    .left .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-gap: 0.15in;
+      margin-top: 0.15in;
+      height: 2.8in;
+    }
+    .photo {
+      background: #F5F5F5;
+      border: 2px solid var(--stroke);
+      border-radius: 14px;
+      background-size: cover;
+      background-position: center;
+      height: 1.25in;
+    }
+    
+    /* Right side - info cards */
+    .right .card {
+      background: var(--card);
+      border: 1.5px solid var(--stroke);
+      border-radius: 14px;
+      padding: 0.2in;
+      margin-bottom: 0.2in;
+      height: 2.8in;
+      box-sizing: border-box;
+    }
+    .right .card h2 {
+      color: var(--blue);
+      margin: 0 0 0.15in 0;
+      font-size: 15pt;
+    }
+    
+    /* Loan Summary grid */
+    .kv-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-column-gap: 0.25in;
+      grid-row-gap: 0.18in;
+    }
+    .kv .k {
+      font-weight: 800;
+      color: var(--text);
+      font-size: 12pt;
+      margin-bottom: 2px;
+    }
+    .kv .v {
+      font-weight: 500;
+      color: var(--text);
+      font-size: 12pt;
+    }
+    
+    /* Property Details facts */
+    .facts .row {
+      display: grid;
+      grid-template-columns: 1.8in 1fr;
+      align-items: baseline;
+      margin-bottom: 0.12in;
+    }
+    .facts .label {
+      font-weight: 800;
+      color: var(--text);
+      font-size: 12pt;
+    }
+    .facts .value {
+      color: var(--muted);
+      font-size: 12pt;
+    }
+    
+    /* Overview */
+    .overview {
+      margin-top: 0.15in;
+    }
+    .overview h2 {
+      font-size: 13pt;
+      margin-bottom: 0.08in;
+      color: var(--text);
+    }
+    .overview p {
+      color: var(--muted);
+      font-size: 11pt;
+      line-height: 1.3;
+      margin: 0;
+      max-width: 7in;
+    }
+    .deal-info-block {
+      margin-top: 0.15in;
+    }
+    .deal-info-block h2 {
+      font-size: 13pt;
+      margin-bottom: 0.08in;
+      color: var(--text);
+    }
+    
+    /* Footer */
+    .footer {
+      position: absolute;
+      left: 0.5in;
+      right: 0.5in;
+      bottom: 0.4in;
       text-align: center;
-      margin-bottom: 30px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #1E66B4;
+      font-size: 10pt;
+      color: var(--muted);
     }
-    h1 { 
-      color: #1E66B4; 
-      font-size: 28px;
-      margin-bottom: 10px;
+    .footer hr {
+      margin-bottom: 0.1in;
+      border: none;
+      border-top: 1px solid var(--stroke);
     }
-    .tagline {
-      color: #3C3C3C;
-      font-size: 14px;
-      font-weight: 700;
-    }
-    .section {
-      margin: 25px 0;
-      page-break-inside: avoid;
-    }
-    .section-title {
-      color: #1E66B4;
-      font-size: 18px;
-      font-weight: 700;
-      margin-bottom: 12px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #D2D2D2;
-    }
-    .info-grid { 
-      display: grid; 
-      grid-template-columns: repeat(2, 1fr); 
-      gap: 12px;
-      margin: 15px 0;
-    }
-    .info-item { 
-      padding: 12px; 
-      background: #F2F5F8; 
-      border-radius: 8px;
-      border: 1px solid #D2D2D2;
-    }
-    .info-label { 
-      font-weight: 700; 
-      color: #3C3C3C;
-      font-size: 11px;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-    .info-value {
-      font-size: 14px;
-      color: #141414;
-    }
-    .text-content {
-      padding: 15px;
-      background: #F2F5F8;
-      border-radius: 8px;
-      border: 1px solid #D2D2D2;
-      line-height: 1.6;
-      font-size: 13px;
-    }
-    .images { 
-      display: grid; 
-      grid-template-columns: repeat(2, 1fr); 
-      gap: 15px; 
-      margin: 20px 0;
-    }
-    .image-hero {
-      grid-column: 1 / -1;
-      width: 100%;
-      max-height: 400px;
-      object-fit: cover;
-      border-radius: 12px;
-      border: 2px solid #D2D2D2;
-    }
-    .images img { 
-      width: 100%; 
-      height: 250px;
-      object-fit: cover;
-      border-radius: 12px;
-      border: 2px solid #D2D2D2;
+    .footer p {
+      margin: 0.05in 0;
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>Deal Sheet</h1>
-    <div class="tagline">Private Lending Secured by Real Estate</div>
+  <div class="page">
+    <header class="header">
+      <div class="phone">877-280-5771</div>
+      <div class="tagline">Private Lending Secured by Real Estate</div>
+    </header>
+
+    <main class="content">
+      <section class="left photos">
+        <div class="hero" style="${deal.heroImage ? `background-image: url('${deal.heroImage}');` : ''}"></div>
+        <div class="grid">
+          <div class="photo" style="${deal.int1Image ? `background-image: url('${deal.int1Image}');` : ''}"></div>
+          <div class="photo" style="${deal.int2Image ? `background-image: url('${deal.int2Image}');` : ''}"></div>
+          <div class="photo" style="${deal.int3Image ? `background-image: url('${deal.int3Image}');` : ''}"></div>
+          <div class="photo" style="${deal.int4Image ? `background-image: url('${deal.int4Image}');` : ''}"></div>
+        </div>
+      </section>
+
+      <section class="right info">
+        <div class="card">
+          <h2>LOAN SUMMARY</h2>
+          <div class="kv-grid">
+            <div class="kv"><div class="k">LOAN #</div><div class="v">${deal.loanNumber || ''}</div></div>
+            <div class="kv"><div class="k">AMOUNT</div><div class="v">${deal.amount || ''}</div></div>
+            <div class="kv"><div class="k">RATE / TYPE</div><div class="v">${deal.rateType || ''}</div></div>
+            <div class="kv"><div class="k">TERM</div><div class="v">${deal.term || ''}</div></div>
+            <div class="kv"><div class="k">MONTHLY RETURN</div><div class="v">${deal.monthlyReturn || ''}</div></div>
+            <div class="kv"><div class="k">LTV</div><div class="v">${deal.ltv || ''}</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>PROPERTY DETAILS</h2>
+          <div class="facts">
+            <div class="row"><div class="label">Address:</div><div class="value">${deal.address || ''}</div></div>
+            <div class="row"><div class="label">Appraisal:</div><div class="value">${deal.appraisal || ''}</div></div>
+            <div class="row"><div class="label">Rent:</div><div class="value">${deal.rent || ''}</div></div>
+            <div class="row"><div class="label">Square Footage:</div><div class="value">${deal.sqft || ''}</div></div>
+            <div class="row"><div class="label">Beds / Baths:</div><div class="value">${deal.bedsBaths || ''}</div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <section class="overview">
+      <h2>MARKET OVERVIEW${deal.marketLocation ? ` — ${deal.marketLocation.toUpperCase()}` : ''}</h2>
+      <p>${deal.marketOverview || ''}</p>
+      ${deal.dealInformation ? `
+      <div class="deal-info-block">
+        <h2>DEAL INFORMATION</h2>
+        <p>${deal.dealInformation}</p>
+      </div>` : ''}
+    </section>
+
+    <footer class="footer">
+      <hr />
+      <p>Safeguard Capital Partners</p>
+      <p>105 N College St, Martinsburg, WV 25401 | www.SafeguardCapitalPartners.com</p>
+    </footer>
   </div>
-
-  <div class="section">
-    <div class="section-title">LOAN SUMMARY</div>
-    <div class="info-grid">
-      <div class="info-item"><div class="info-label">Loan #</div><div class="info-value">${deal.loanNumber || 'N/A'}</div></div>
-      <div class="info-item"><div class="info-label">Amount</div><div class="info-value">${deal.amount || ''}</div></div>
-      <div class="info-item"><div class="info-label">Rate / Type</div><div class="info-value">${deal.rateType || ''}</div></div>
-      <div class="info-item"><div class="info-label">Term</div><div class="info-value">${deal.term || ''}</div></div>
-      <div class="info-item"><div class="info-label">Monthly Return</div><div class="info-value">${deal.monthlyReturn || ''}</div></div>
-      <div class="info-item"><div class="info-label">LTV</div><div class="info-value">${deal.ltv || ''}</div></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">PROPERTY DETAILS</div>
-    <div class="info-grid">
-      <div class="info-item"><div class="info-label">Address</div><div class="info-value">${deal.address || ''}</div></div>
-      <div class="info-item"><div class="info-label">Appraisal</div><div class="info-value">${deal.appraisal || ''}</div></div>
-      <div class="info-item"><div class="info-label">Rent</div><div class="info-value">${deal.rent || ''}</div></div>
-      <div class="info-item"><div class="info-label">Square Footage</div><div class="info-value">${deal.sqft || ''}</div></div>
-      <div class="info-item"><div class="info-label">Beds / Baths</div><div class="info-value">${deal.bedsBaths || ''}</div></div>
-    </div>
-  </div>
-
-  ${deal.marketLocation ? `
-  <div class="section">
-    <div class="section-title">MARKET LOCATION</div>
-    <div class="text-content">${deal.marketLocation}</div>
-  </div>` : ''}
-
-  ${deal.marketOverview ? `
-  <div class="section">
-    <div class="section-title">MARKET OVERVIEW</div>
-    <div class="text-content">${deal.marketOverview}</div>
-  </div>` : ''}
-
-  ${deal.dealInformation ? `
-  <div class="section">
-    <div class="section-title">DEAL INFORMATION</div>
-    <div class="text-content">${deal.dealInformation}</div>
-  </div>` : ''}
-
-  ${(deal.heroImage || deal.int1Image || deal.int2Image || deal.int3Image || deal.int4Image) ? `
-  <div class="section">
-    <div class="section-title">PROPERTY PHOTOS</div>
-    <div class="images">
-      ${deal.heroImage ? `<img src="${deal.heroImage}" class="image-hero" alt="Main Property" />` : ''}
-      ${deal.int1Image ? `<img src="${deal.int1Image}" alt="Interior 1" />` : ''}
-      ${deal.int2Image ? `<img src="${deal.int2Image}" alt="Interior 2" />` : ''}
-      ${deal.int3Image ? `<img src="${deal.int3Image}" alt="Interior 3" />` : ''}
-      ${deal.int4Image ? `<img src="${deal.int4Image}" alt="Interior 4" />` : ''}
-    </div>
-  </div>` : ''}
 </body>
 </html>`;
     
