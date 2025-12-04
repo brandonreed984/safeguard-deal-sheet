@@ -188,8 +188,6 @@ if (DATABASE_URL) {
     CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews(investorName);
     CREATE INDEX IF NOT EXISTS idx_portfolio_archived ON portfolio_reviews(archived);
   `);
-    CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews(investorName);
-  `);
   
   db = sqlite;
   console.log('✅ SQLite Database initialized (local dev)');
