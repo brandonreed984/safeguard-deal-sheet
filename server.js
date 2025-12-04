@@ -80,14 +80,15 @@ app.post("/api/deals", async (req, res) => {
     const data = req.body;
     const stmt = db.prepare(`
       INSERT INTO deals (
-        loanNumber, amount, rateType, term, monthlyReturn, ltv,
-        address, appraisal, rent, sqft, bedsBaths, marketLocation,
-        marketOverview, dealInformation, heroImage, int1Image, int2Image,
-        int3Image, int4Image, attachedPdf
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
+        address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
+        "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
+        "int3Image", "int4Image", "attachedPdf"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      RETURNING id
     `);
     
-    const result = stmt.run(
+    const result = await stmt.run(
       data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
       data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
       data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
@@ -102,15 +103,15 @@ app.post("/api/deals", async (req, res) => {
 });
 
 // Get all deals (searchable by address)
-app.get("/api/deals", (req, res) => {
+app.get("/api/deals", async (req, res) => {
   try {
     const search = req.query.search || '';
     let deals;
     if (search) {
-      const stmt = db.prepare('SELECT * FROM deals WHERE address LIKE ? OR loanNumber LIKE ? ORDER BY updatedAt DESC');
-      deals = stmt.all(`%${search}%`, `%${search}%`);
+      const stmt = db.prepare('SELECT * FROM deals WHERE address ILIKE $1 OR "loanNumber" ILIKE $2 ORDER BY "updatedAt" DESC');
+      deals = await stmt.all(`%${search}%`, `%${search}%`);
     } else {
-      deals = db.prepare('SELECT * FROM deals ORDER BY updatedAt DESC').all();
+      deals = await db.prepare('SELECT * FROM deals ORDER BY "updatedAt" DESC').all();
     }
     res.json(deals);
   } catch (e) {
@@ -120,9 +121,9 @@ app.get("/api/deals", (req, res) => {
 });
 
 // Get a single deal by ID
-app.get("/api/deals/:id", (req, res) => {
+app.get("/api/deals/:id", async (req, res) => {
   try {
-    const deal = db.prepare('SELECT * FROM deals WHERE id = ?').get(req.params.id);
+    const deal = await db.prepare('SELECT * FROM deals WHERE id = $1').get(req.params.id);
     if (!deal) return res.status(404).json({ error: 'Deal not found' });
     res.json(deal);
   } catch (e) {
@@ -132,19 +133,19 @@ app.get("/api/deals/:id", (req, res) => {
 });
 
 // Update a deal
-app.put("/api/deals/:id", (req, res) => {
+app.put("/api/deals/:id", async (req, res) => {
   try {
     const data = req.body;
     const stmt = db.prepare(`
       UPDATE deals SET
-        loanNumber=?, amount=?, rateType=?, term=?, monthlyReturn=?, ltv=?,
-        address=?, appraisal=?, rent=?, sqft=?, bedsBaths=?, marketLocation=?,
-        marketOverview=?, dealInformation=?, heroImage=?, int1Image=?, int2Image=?,
-        int3Image=?, int4Image=?, attachedPdf=?, updatedAt=CURRENT_TIMESTAMP
-      WHERE id = ?
+        "loanNumber"=$1, amount=$2, "rateType"=$3, term=$4, "monthlyReturn"=$5, ltv=$6,
+        address=$7, appraisal=$8, rent=$9, sqft=$10, "bedsBaths"=$11, "marketLocation"=$12,
+        "marketOverview"=$13, "dealInformation"=$14, "heroImage"=$15, "int1Image"=$16, "int2Image"=$17,
+        "int3Image"=$18, "int4Image"=$19, "attachedPdf"=$20, "updatedAt"=CURRENT_TIMESTAMP
+      WHERE id = $21
     `);
     
-    stmt.run(
+    await stmt.run(
       data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
       data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
       data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
@@ -159,9 +160,9 @@ app.put("/api/deals/:id", (req, res) => {
 });
 
 // Delete a deal
-app.delete("/api/deals/:id", (req, res) => {
+app.delete("/api/deals/:id", async (req, res) => {
   try {
-    db.prepare('DELETE FROM deals WHERE id = ?').run(req.params.id);
+    await db.prepare('DELETE FROM deals WHERE id = $1').run(req.params.id);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
