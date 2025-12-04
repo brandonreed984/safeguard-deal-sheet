@@ -212,13 +212,38 @@
 
     async function generatePDF(id) {
       try {
-        const res = await fetch(`/api/deals/${id}`);
-        const deal = await res.json();
-        // Store in sessionStorage and open preview with autogen
-        sessionStorage.setItem('safeguard_preview', JSON.stringify(deal));
-        window.open('/preview/index.html?autogen=1', '_blank');
+        // Show loading indicator
+        const originalButton = event.target;
+        const originalText = originalButton.textContent;
+        originalButton.textContent = 'Generating...';
+        originalButton.disabled = true;
+        
+        // Call server endpoint to generate merged PDF
+        const res = await fetch(`/api/generate-pdf/${id}`, { method: 'POST' });
+        if (!res.ok) {
+          throw new Error('Failed to generate PDF');
+        }
+        
+        // Download the PDF
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `deal-${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        // Restore button
+        originalButton.textContent = originalText;
+        originalButton.disabled = false;
       } catch (err) {
         alert('Failed to generate PDF: ' + err.message);
+        if (event.target) {
+          event.target.textContent = 'Generate PDF';
+          event.target.disabled = false;
+        }
       }
     }
 

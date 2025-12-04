@@ -127,12 +127,16 @@ function attachThumbPreview(inputName, thumbId) {
 ['hero','int1','int2','int3','int4'].forEach((name) => attachThumbPreview(name, `thumb-${name}`));
 
 // PDF upload filename display
-const pdfInput = document.querySelector('input[name="attachedPdf"]');
-const pdfFilename = document.getElementById('pdf-upload-filename');
-if (pdfInput && pdfFilename) {
+const pdfInput = document.querySelector('input[name="attachedPdfs"]');
+const pdfFilenames = document.getElementById('pdf-upload-filenames');
+if (pdfInput && pdfFilenames) {
   pdfInput.addEventListener('change', () => {
-    const file = pdfInput.files && pdfInput.files[0];
-    pdfFilename.textContent = file ? file.name : '';
+    const files = Array.from(pdfInput.files || []);
+    if (files.length === 0) {
+      pdfFilenames.textContent = '';
+    } else {
+      pdfFilenames.innerHTML = files.map(f => `<div>• ${f.name}</div>`).join('');
+    }
   });
 }
 
@@ -253,15 +257,21 @@ async function collectFormData() {
     }
   }
 
-  // Attach PDF as data URL if present
-  const pdfFile = fd.get('attachedPdf');
-  if (pdfFile && pdfFile instanceof File && pdfFile.size) {
-    try {
-      const url = await fileToDataUrl(pdfFile);
-      if (url) data.attachedPdf = url;
-    } catch (e) {
-      console.warn('Failed to read attached PDF', e);
+  // Attach multiple PDFs as data URLs if present
+  const pdfFiles = fd.getAll('attachedPdfs');
+  const pdfDataUrls = [];
+  for (const pdfFile of pdfFiles) {
+    if (pdfFile && pdfFile instanceof File && pdfFile.size) {
+      try {
+        const url = await fileToDataUrl(pdfFile);
+        if (url) pdfDataUrls.push(url);
+      } catch (e) {
+        console.warn('Failed to read attached PDF', e);
+      }
     }
+  }
+  if (pdfDataUrls.length > 0) {
+    data.attachedPdf = JSON.stringify(pdfDataUrls);
   }
 
   return data;

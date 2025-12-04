@@ -7,7 +7,7 @@ const DATABASE_URL = process.env.DATABASE_URL || 'postgresql://postgres:aqDDwRug
 
 let db;
 
-if (DATABASE_URL) {
+if (DATABASE_URL && !DATABASE_URL.includes('railway.internal')) {
   // PostgreSQL for production (Railway)
   console.log('📊 Connecting to PostgreSQL...');
   

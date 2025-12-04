@@ -93,6 +93,116 @@ app.get("/api/pdfs", async (req, res) => {
   }
 });
 
+// === PDF Generation and Merging ===
+app.post("/api/generate-pdf/:id", async (req, res) => {
+  try {
+    const { default: puppeteer } = await import('puppeteer');
+    const { PDFDocument } = await import('pdf-lib');
+    
+    // Get the deal data
+    let deal;
+    if (db.isPostgres) {
+      const result = await db.query('SELECT * FROM deals WHERE id = $1', [req.params.id]);
+      deal = result.rows[0];
+    } else {
+      deal = db.prepare('SELECT * FROM deals WHERE id = ?').get(req.params.id);
+    }
+    
+    if (!deal) {
+      return res.status(404).json({ error: 'Deal not found' });
+    }
+    
+    // Launch headless browser
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+    
+    const page = await browser.newPage();
+    
+    // Build HTML for the deal sheet
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { color: #1E66B4; }
+    .deal-info { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0; }
+    .deal-info div { padding: 10px; background: #f5f5f5; border-radius: 5px; }
+    .deal-info label { font-weight: bold; display: block; margin-bottom: 5px; }
+    .images { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0; }
+    .images img { width: 100%; height: auto; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Deal Sheet - ${deal.loanNumber || 'N/A'}</h1>
+  <div class="deal-info">
+    <div><label>Address:</label> ${deal.address || ''}</div>
+    <div><label>Amount:</label> ${deal.amount || ''}</div>
+    <div><label>Rate Type:</label> ${deal.rateType || ''}</div>
+    <div><label>Term:</label> ${deal.term || ''}</div>
+    <div><label>Monthly Return:</label> ${deal.monthlyReturn || ''}</div>
+    <div><label>LTV:</label> ${deal.ltv || ''}</div>
+    <div><label>Appraisal:</label> ${deal.appraisal || ''}</div>
+    <div><label>Rent:</label> ${deal.rent || ''}</div>
+    <div><label>Sq Ft:</label> ${deal.sqft || ''}</div>
+    <div><label>Beds/Baths:</label> ${deal.bedsBaths || ''}</div>
+  </div>
+  ${deal.marketLocation ? `<div><h3>Market Location</h3><p>${deal.marketLocation}</p></div>` : ''}
+  ${deal.marketOverview ? `<div><h3>Market Overview</h3><p>${deal.marketOverview}</p></div>` : ''}
+  ${deal.dealInformation ? `<div><h3>Deal Information</h3><p>${deal.dealInformation}</p></div>` : ''}
+  <div class="images">
+    ${deal.heroImage ? `<img src="${deal.heroImage}" alt="Hero" />` : ''}
+    ${deal.int1Image ? `<img src="${deal.int1Image}" alt="Interior 1" />` : ''}
+    ${deal.int2Image ? `<img src="${deal.int2Image}" alt="Interior 2" />` : ''}
+    ${deal.int3Image ? `<img src="${deal.int3Image}" alt="Interior 3" />` : ''}
+    ${deal.int4Image ? `<img src="${deal.int4Image}" alt="Interior 4" />` : ''}
+  </div>
+</body>
+</html>`;
+    
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const dealSheetPdf = await page.pdf({ format: 'A4', printBackground: true });
+    await browser.close();
+    
+    // Create PDF document from the generated PDF
+    const pdfDoc = await PDFDocument.create();
+    const dealSheetDoc = await PDFDocument.load(dealSheetPdf);
+    const dealSheetPages = await pdfDoc.copyPages(dealSheetDoc, dealSheetDoc.getPageIndices());
+    dealSheetPages.forEach(page => pdfDoc.addPage(page));
+    
+    // Merge attached PDFs if any
+    if (deal.attachedPdf) {
+      try {
+        const attachedPdfs = JSON.parse(deal.attachedPdf);
+        for (const pdfDataUrl of attachedPdfs) {
+          // Extract base64 data from data URL
+          const base64Data = pdfDataUrl.split(',')[1];
+          const pdfBytes = Buffer.from(base64Data, 'base64');
+          const attachedDoc = await PDFDocument.load(pdfBytes);
+          const attachedPages = await pdfDoc.copyPages(attachedDoc, attachedDoc.getPageIndices());
+          attachedPages.forEach(page => pdfDoc.addPage(page));
+        }
+      } catch (e) {
+        console.error('Error merging attached PDFs:', e);
+      }
+    }
+    
+    // Save the merged PDF
+    const mergedPdfBytes = await pdfDoc.save();
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="deal-${deal.loanNumber || deal.id}.pdf"`);
+    res.send(Buffer.from(mergedPdfBytes));
+    
+  } catch (err) {
+    console.error('PDF generation error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // === Database Endpoints ===
 
 // Create or update a deal
