@@ -770,36 +770,50 @@ app.post("/api/generate-portfolio-pdf/:id", async (req, res) => {
 </html>
     `;
     
+    console.log('Setting page content...');
     await page.setContent(html, { waitUntil: 'networkidle0' });
     
+    console.log('Generating PDF buffer...');
     const pdfBuffer = await page.pdf({
       format: 'Letter',
       printBackground: true,
       margin: { top: '0.5in', right: '0.5in', bottom: '0.5in', left: '0.5in' }
     });
     
+    console.log('PDF buffer size:', pdfBuffer.length, 'bytes');
+    
     await browser.close();
+    console.log('Browser closed');
+    
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      throw new Error('Generated PDF is empty');
+    }
     
     res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Length', pdfBuffer.length.toString());
     res.setHeader('Content-Disposition', `attachment; filename="Portfolio-${portfolio.investorName.replace(/\s+/g, '-')}.pdf"`);
-    res.send(pdfBuffer);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.end(pdfBuffer, 'binary');
     
-    console.log('✅ Portfolio PDF generated successfully');
+    console.log('✅ Portfolio PDF sent successfully:', pdfBuffer.length, 'bytes');
     
   } catch (err) {
-    console.error('Portfolio PDF generation error:', err);
+    console.error('❌ Portfolio PDF generation error:', err.message);
     console.error('Stack trace:', err.stack);
     
     // Make sure browser is closed on error
     if (browser) {
       try {
         await browser.close();
+        console.log('Browser closed after error');
       } catch (closeErr) {
-        console.error('Error closing browser:', closeErr);
+        console.error('Error closing browser:', closeErr.message);
       }
     }
     
-    res.status(500).json({ error: err.message });
+    if (!res.headersSent) {
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 
