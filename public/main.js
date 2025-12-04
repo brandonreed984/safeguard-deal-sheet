@@ -412,6 +412,15 @@ document.getElementById('previewBtn').addEventListener('click', async () => {
       if (!res.ok) {
         throw new Error('Failed to save before preview');
       }
+      
+      // Reload the deal data after save to update existingDealData
+      const reloadRes = await fetch(`/api/deals/${currentDealId}`);
+      if (reloadRes.ok) {
+        const reloadedDeal = await reloadRes.json();
+        existingDealData = reloadedDeal;
+        console.log('Reloaded deal after preview save, has PDFs:', !!reloadedDeal.attachedPdf);
+      }
+      
       // Open preview with deal ID
       const win = window.open(`/preview/index.html?dealId=${currentDealId}`, '_blank');
       if (!win) {
