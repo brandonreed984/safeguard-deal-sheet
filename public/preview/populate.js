@@ -119,6 +119,25 @@
         const span = el.querySelector('span'); if (span) span.style.display = 'none';
       });
 
+      // Display attached PDFs info if any
+      if (data.attachedPdf) {
+        try {
+          const attachedPdfs = JSON.parse(data.attachedPdf);
+          if (Array.isArray(attachedPdfs) && attachedPdfs.length > 0) {
+            const infoDiv = document.getElementById('attachedPdfsInfo');
+            const listEl = document.getElementById('attachedPdfsList');
+            if (infoDiv && listEl) {
+              infoDiv.style.display = 'block';
+              listEl.innerHTML = attachedPdfs.map((pdf, idx) => 
+                `<li>Attached PDF ${idx + 1} (will be merged)</li>`
+              ).join('');
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to parse attached PDFs:', e);
+        }
+      }
+
       // Wire manual Generate PDF button
       const genBtn = document.getElementById('generatePdf');
       if (genBtn) genBtn.addEventListener('click', () => generateAndUpload(data));
@@ -139,64 +158,47 @@
 
   async function generateAndUpload(data) {
     try {
-      const pageEl = document.getElementById('page');
-      if (!pageEl) throw new Error('Preview page element not found');
-
-      const opt = {
-        margin: [0, 0, 0, 0],
-        filename: `Safeguard_Deal_Sheet_${(data.loanNumber||'deal')}_${new Date().toISOString().slice(0,10)}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' },
-      };
-
-      // Generate the main PDF as a blob
-      const mainBlob = await html2pdf().set(opt).from(pageEl).outputPdf('blob');
-
-      // If an attached PDF exists, merge it
-      let finalBlob = mainBlob;
-      if (data.attachedPdf) {
-        try {
-          // Load both PDFs using pdf-lib
-          const mainPdfBytes = await mainBlob.arrayBuffer();
-          let attachedPdfBytes;
-          if (data.attachedPdf.startsWith('data:')) {
-            // Convert data URL to ArrayBuffer
-            const res = await fetch(data.attachedPdf);
-            attachedPdfBytes = await res.arrayBuffer();
-          } else {
-            // Assume it's a URL
-            attachedPdfBytes = await fetch(data.attachedPdf).then(r => r.arrayBuffer());
-          }
-          const mainDoc = await window.PDFLib.PDFDocument.load(mainPdfBytes);
-          const attachDoc = await window.PDFLib.PDFDocument.load(attachedPdfBytes);
-          const pages = await mainDoc.copyPages(attachDoc, attachDoc.getPageIndices());
-          pages.forEach(p => mainDoc.addPage(p));
-          const mergedBytes = await mainDoc.save();
-          finalBlob = new Blob([mergedBytes], { type: 'application/pdf' });
-        } catch (mergeErr) {
-          alert('Failed to merge attached PDF. Only the main PDF will be uploaded.');
-          console.error('Failed to merge attached PDF:', mergeErr);
-          // fallback: just upload the main PDF
-        }
+      // Check if we have a dealId (saved deal)
+      const params = new URLSearchParams(window.location.search);
+      const dealId = params.get('dealId');
+      
+      if (!dealId) {
+        alert('Please save the deal first before generating PDF.');
+        return;
       }
 
+      // Use server-side PDF generation which includes attached PDFs
+      const res = await fetch(`/api/generate-pdf/${dealId}`, { method: 'POST' });
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to generate PDF');
+      }
+
+      // Get the PDF blob
+      const finalBlob = await res.blob();
+      
+      // Create filename
+      const filename = `Safeguard_Deal_Sheet_${(data.loanNumber||'deal')}_${new Date().toISOString().slice(0,10)}.pdf`;
+
+      // Upload to storage
       const fd = new FormData();
-      fd.append('file', finalBlob, opt.filename);
+      fd.append('file', finalBlob, filename);
       fd.append('meta', JSON.stringify({ loanNumber: data.loanNumber, address: data.address }));
 
-      const res = await fetch('/api/pdfs', { method: 'POST', body: fd });
-      if (!res.ok) {
-        const text = await res.text();
+      const uploadRes = await fetch('/api/pdfs', { method: 'POST', body: fd });
+      if (!uploadRes.ok) {
+        const text = await uploadRes.text();
         throw new Error(text || 'Upload failed');
       }
-      const json = await res.json();
-      alert('PDF generated and uploaded: ' + (json.path || 'uploaded'));
-      // close the preview window after a short delay
+      const json = await uploadRes.json();
+      alert('PDF generated and uploaded successfully!');
+      
+      // Close the preview window after a short delay
       setTimeout(() => window.close(), 1200);
     } catch (err) {
       console.error('generateAndUpload error:', err);
-      alert('Auto PDF generation/upload failed: ' + (err.message || err));
+      alert('PDF generation/upload failed: ' + (err.message || err));
     }
   }
 

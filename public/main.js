@@ -468,20 +468,45 @@ document.getElementById('previewBtn').addEventListener('click', async () => {
   }
 });
 
-// Handle PDF Generation
+// Handle PDF Generation & Upload
 document.getElementById('pdfBtn').addEventListener('click', async () => {
-  setStatus('Preparing preview for PDF generation...');
+  setStatus('Saving deal and preparing PDF generation...');
   try {
     const data = await collectFormData();
-    sessionStorage.setItem('safeguard_preview', JSON.stringify(data));
+    
+    // Save the deal first
+    let dealId = currentDealId;
+    if (!dealId) {
+      // Create new deal
+      const res = await fetch('/api/deals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Failed to save deal');
+      const result = await res.json();
+      dealId = result.id;
+      currentDealId = dealId;
+      console.log('Created new deal with ID:', dealId);
+    } else {
+      // Update existing deal
+      const res = await fetch(`/api/deals/${dealId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('Failed to update deal');
+      console.log('Updated deal:', dealId);
+    }
 
-    const win = window.open('/preview/index.html?autogen=1', '_blank');
+    // Open preview with autogen flag
+    const win = window.open(`/preview/index.html?dealId=${dealId}&autogen=1`, '_blank');
     if (!win) {
       setStatus('Popup blocked — please allow popups for this site', true);
       return;
     }
-    setStatus('Opened preview for PDF generation. It will auto-generate and upload.');
+    setStatus('Deal saved. Preview opened for PDF generation and upload.');
   } catch (err) {
-    setStatus('Failed to prepare PDF preview: ' + (err.message || err), true);
+    setStatus('Failed to prepare PDF: ' + (err.message || err), true);
   }
 });
