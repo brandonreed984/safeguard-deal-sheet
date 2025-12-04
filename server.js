@@ -1062,18 +1062,23 @@ app.get("/api/portfolios/:id", async (req, res) => {
 app.post("/api/portfolios", async (req, res) => {
   try {
     const data = req.body;
+    console.log('📊 Creating portfolio:', data.investorName);
+    console.log('Database type:', db.isPostgres ? 'PostgreSQL' : 'SQLite');
     
     if (db.isPostgres) {
+      console.log('Executing PostgreSQL INSERT...');
       const result = await db.query(
         `INSERT INTO portfolio_reviews 
-         (investorName, loansData, currentInvestmentTotal, lifetimeInvestmentTotal, lifetimeInterestPaid) 
+         ("investorName", "loansData", "currentInvestmentTotal", "lifetimeInvestmentTotal", "lifetimeInterestPaid") 
          VALUES ($1, $2, $3, $4, $5) 
          RETURNING id`,
         [data.investorName, data.loansData, data.currentInvestmentTotal, 
          data.lifetimeInvestmentTotal, data.lifetimeInterestPaid]
       );
+      console.log('✅ Portfolio created with ID:', result.rows[0].id);
       res.json({ ok: true, id: result.rows[0].id });
     } else {
+      console.log('Executing SQLite INSERT...');
       const stmt = db.prepare(
         `INSERT INTO portfolio_reviews 
          (investorName, loansData, currentInvestmentTotal, lifetimeInvestmentTotal, lifetimeInterestPaid) 
@@ -1083,10 +1088,12 @@ app.post("/api/portfolios", async (req, res) => {
         data.investorName, data.loansData, data.currentInvestmentTotal,
         data.lifetimeInvestmentTotal, data.lifetimeInterestPaid
       );
+      console.log('✅ Portfolio created with ID:', result.lastInsertRowid);
       res.json({ ok: true, id: result.lastInsertRowid });
     }
   } catch (e) {
-    console.error('Error creating portfolio:', e);
+    console.error('❌ Error creating portfolio:', e.message);
+    console.error('Stack:', e.stack);
     res.status(500).json({ error: e.message });
   }
 });
@@ -1099,8 +1106,8 @@ app.put("/api/portfolios/:id", async (req, res) => {
     if (db.isPostgres) {
       await db.query(
         `UPDATE portfolio_reviews SET 
-         investorName=$1, loansData=$2, currentInvestmentTotal=$3, 
-         lifetimeInvestmentTotal=$4, lifetimeInterestPaid=$5, updatedAt=CURRENT_TIMESTAMP 
+         "investorName"=$1, "loansData"=$2, "currentInvestmentTotal"=$3, 
+         "lifetimeInvestmentTotal"=$4, "lifetimeInterestPaid"=$5, "updatedAt"=CURRENT_TIMESTAMP 
          WHERE id=$6`,
         [data.investorName, data.loansData, data.currentInvestmentTotal,
          data.lifetimeInvestmentTotal, data.lifetimeInterestPaid, req.params.id]

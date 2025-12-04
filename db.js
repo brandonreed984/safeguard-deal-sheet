@@ -59,6 +59,7 @@ if (DATABASE_URL) {
     `);
 
     // Create portfolio_reviews table
+    console.log('Creating portfolio_reviews table...');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS portfolio_reviews (
         id SERIAL PRIMARY KEY,
@@ -73,6 +74,7 @@ if (DATABASE_URL) {
       
       CREATE INDEX IF NOT EXISTS idx_investorName ON portfolio_reviews("investorName");
     `);
+    console.log('✅ portfolio_reviews table ready');
 
     // Export the raw pool for PostgreSQL
     db = pool;
