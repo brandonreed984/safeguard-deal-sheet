@@ -53,6 +53,17 @@
       
       // expose parsed data for other scripts (and for auto-generation)
       window.__safeguard_preview_data = data;
+      
+      // Debug logging
+      console.log('Preview data loaded:', {
+        loanNumber: data.loanNumber,
+        hasHeroImage: !!data.heroImage,
+        hasHero: !!data.hero,
+        hasInt1Image: !!data.int1Image,
+        hasInt1: !!data.int1,
+        hasPdfs: !!data.attachedPdf,
+        imageKeys: Object.keys(data).filter(k => k.includes('Image') || k.includes('hero') || k.includes('int'))
+      });
 
       // Loan summary KV pairs
       setKV('LOAN #', data.loanNumber);

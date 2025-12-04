@@ -130,6 +130,16 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
       return res.status(404).json({ error: 'Deal not found' });
     }
     
+    // Debug logging
+    console.log('🎨 PDF Generation for deal:', deal.id);
+    console.log('  - Has heroImage:', !!deal.heroImage);
+    console.log('  - Has int1Image:', !!deal.int1Image);
+    console.log('  - Has attachedPdf:', !!deal.attachedPdf);
+    if (deal.heroImage) {
+      console.log('  - heroImage length:', deal.heroImage.length);
+      console.log('  - heroImage starts with:', deal.heroImage.substring(0, 50));
+    }
+    
     // Launch headless browser with Railway-compatible options
     let browser;
     try {
