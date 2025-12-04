@@ -9,10 +9,23 @@ let db;
 
 if (DATABASE_URL) {
   // PostgreSQL for production (Railway)
+  console.log('📊 Connecting to PostgreSQL...');
+  
   const pool = new Pool({
     connectionString: DATABASE_URL,
-    ssl: DATABASE_URL.includes('railway.app') ? { rejectUnauthorized: false } : false
+    ssl: {
+      rejectUnauthorized: false
+    }
   });
+
+  // Test connection
+  try {
+    await pool.query('SELECT NOW()');
+    console.log('✅ PostgreSQL connected');
+  } catch (err) {
+    console.error('❌ PostgreSQL connection failed:', err.message);
+    throw err;
+  }
 
   // Create deals table
   await pool.query(`

@@ -78,9 +78,11 @@ app.get("/api/pdfs", async (req, res) => {
 app.post("/api/deals", async (req, res) => {
   try {
     const data = req.body;
+    console.log('📝 Creating deal:', data.loanNumber, data.address);
     
     if (db.pool) {
       // PostgreSQL
+      console.log('Using PostgreSQL');
       const result = await db.pool.query(`
         INSERT INTO deals (
           "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
@@ -95,6 +97,7 @@ app.post("/api/deals", async (req, res) => {
         data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
         data.int3, data.int4, data.attachedPdf
       ]);
+      console.log('✅ Deal created with ID:', result.rows[0].id);
       res.json({ ok: true, id: result.rows[0].id });
     } else {
       // SQLite
@@ -115,7 +118,8 @@ app.post("/api/deals", async (req, res) => {
       res.json({ ok: true, id: result.lastInsertRowid });
     }
   } catch (e) {
-    console.error(e);
+    console.error('❌ Error creating deal:', e.message);
+    console.error('Stack:', e.stack);
     res.status(500).json({ error: e.message });
   }
 });
