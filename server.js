@@ -10,6 +10,12 @@ import db from "./db.js";
 console.log('Imports successful...');
 
 dotenv.config();
+
+console.log('🔍 Environment check:');
+console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('PORT:', process.env.PORT || 5000);
+console.log('db.pool exists:', !!db.pool);
+
 const app = express();
 app.use(cors());
 app.use(express.static("public"));

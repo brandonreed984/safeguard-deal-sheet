@@ -278,9 +278,12 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
       body: JSON.stringify(data)
     });
     
-    if (!res.ok) throw new Error('Failed to save');
-    
     const result = await res.json();
+    
+    if (!res.ok) {
+      console.error('Server error:', result);
+      throw new Error(result.error || 'Failed to save');
+    }
     if (!currentDealId && result.id) {
       currentDealId = result.id;
     }
