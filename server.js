@@ -13,6 +13,8 @@ dotenv.config();
 
 console.log('🔍 Environment check:');
 console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+console.log('DATABASE_URL value:', process.env.DATABASE_URL ? 'SET (hidden)' : 'NOT SET');
+console.log('All env keys:', Object.keys(process.env).filter(k => k.includes('DATA') || k.includes('PG')));
 console.log('PORT:', process.env.PORT || 5000);
 
 // Create a fresh PostgreSQL pool if DATABASE_URL exists
