@@ -39,6 +39,9 @@ let existingDealData = null; // Store loaded deal data to preserve on save
 const urlParams = new URLSearchParams(window.location.search);
 const editId = urlParams.get('id');
 
+// PDF Management
+let attachedPdfs = []; // Array of {name: string, dataUrl: string}
+
 // Auto-generate loan number on first load if empty (only for new deals)
 window.addEventListener('DOMContentLoaded', async () => {
   const input = document.querySelector('input[name="loanNumber"]');
@@ -84,13 +87,18 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
       });
       
-      // Display attached PDF filenames if they exist
+      // Load attached PDFs if they exist
       if (deal.attachedPdf) {
         try {
           const pdfUrls = JSON.parse(deal.attachedPdf);
-          const display = document.getElementById('pdf-filename-display');
-          if (display && Array.isArray(pdfUrls) && pdfUrls.length > 0) {
-            display.textContent = `${pdfUrls.length} PDF(s) attached`;
+          if (Array.isArray(pdfUrls) && pdfUrls.length > 0) {
+            // Convert to our PDF management format
+            attachedPdfs = pdfUrls.map((dataUrl, idx) => ({
+              name: `Existing PDF ${idx + 1}`,
+              size: Math.round(dataUrl.length * 0.75), // Approximate size from base64
+              dataUrl: dataUrl
+            }));
+            renderPdfList();
           }
         } catch (e) {
           console.warn('Error parsing attached PDFs', e);
@@ -141,19 +149,90 @@ function attachThumbPreview(inputName, thumbId) {
 
 ['hero','int1','int2','int3','int4'].forEach((name) => attachThumbPreview(name, `thumb-${name}`));
 
-// PDF upload filename display
-const pdfInput = document.querySelector('input[name="attachedPdfs"]');
-const pdfFilenames = document.getElementById('pdf-upload-filenames');
-if (pdfInput && pdfFilenames) {
-  pdfInput.addEventListener('change', () => {
-    const files = Array.from(pdfInput.files || []);
-    if (files.length === 0) {
-      pdfFilenames.textContent = '';
-    } else {
-      pdfFilenames.innerHTML = files.map(f => `<div>• ${f.name}</div>`).join('');
-    }
-  });
+// ===== PDF Management System =====
+
+// Render the list of attached PDFs
+function renderPdfList() {
+  const listEl = document.getElementById('attached-pdfs-list');
+  if (!listEl) return;
+  
+  if (attachedPdfs.length === 0) {
+    listEl.innerHTML = '<div style="color:#999;font-size:13px;">No PDFs attached yet</div>';
+    return;
+  }
+  
+  listEl.innerHTML = attachedPdfs.map((pdf, idx) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;margin-bottom:6px;">
+      <div style="flex:1;font-size:13px;color:#333;">
+        <strong>📄 ${pdf.name}</strong>
+        <span style="color:#999;margin-left:8px;">(${(pdf.size / 1024).toFixed(0)} KB)</span>
+      </div>
+      <button type="button" onclick="removePdf(${idx})" style="padding:4px 12px;background:#dc3545;color:white;border:none;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">Remove</button>
+    </div>
+  `).join('');
 }
+
+// Add PDFs from file input
+async function addPdfsFromInput() {
+  const input = document.getElementById('pdf-file-input');
+  if (!input || !input.files || input.files.length === 0) {
+    alert('Please select PDF file(s) first');
+    return;
+  }
+  
+  const files = Array.from(input.files);
+  const MAX_SIZE = 10 * 1024 * 1024; // 10MB per PDF
+  
+  for (const file of files) {
+    if (!file.type.includes('pdf')) {
+      alert(`Skipping ${file.name} - not a PDF file`);
+      continue;
+    }
+    
+    if (file.size > MAX_SIZE) {
+      alert(`Skipping ${file.name} - file too large (max 10MB)`);
+      continue;
+    }
+    
+    // Convert to data URL
+    const dataUrl = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+    
+    attachedPdfs.push({
+      name: file.name,
+      size: file.size,
+      dataUrl: dataUrl
+    });
+  }
+  
+  // Clear input
+  input.value = '';
+  
+  // Update display
+  renderPdfList();
+  setStatus(`Added ${files.length} PDF(s). Total: ${attachedPdfs.length}`);
+}
+
+// Remove a PDF by index
+window.removePdf = function(idx) {
+  if (confirm(`Remove "${attachedPdfs[idx].name}"?`)) {
+    attachedPdfs.splice(idx, 1);
+    renderPdfList();
+    setStatus(`PDF removed. Total: ${attachedPdfs.length}`);
+  }
+};
+
+// Wire up the Add PDF button
+const addPdfBtn = document.getElementById('add-pdf-btn');
+if (addPdfBtn) {
+  addPdfBtn.addEventListener('click', addPdfsFromInput);
+}
+
+// Initial render
+renderPdfList();
 
 // Drag & drop handlers: allow dropping an image onto the .drop-wrap for each slot
 function attachDragDrop(name) {
@@ -278,54 +357,18 @@ async function collectFormData() {
     }
   }
 
-  // Attach multiple PDFs as data URLs if present
-  const pdfFiles = fd.getAll('attachedPdfs');
-  const pdfDataUrls = [];
-  
-  // Check if new PDFs were uploaded
-  const hasNewPdfs = pdfFiles.some(f => f instanceof File && f.size > 0);
-  
+  // Use the attachedPdfs array managed by the PDF system
   console.log('📎 PDF Collection:', {
-    hasExistingData: !!existingDealData,
-    hasExistingPdfs: !!(existingDealData && existingDealData.attachedPdf),
-    newFilesCount: pdfFiles.length,
-    hasNewPdfs: hasNewPdfs
+    pdfCount: attachedPdfs.length
   });
   
-  if (hasNewPdfs) {
-    // New PDFs uploaded - REPLACE existing ones
-    console.log('  📄 New PDFs uploaded - replacing existing');
-    for (const pdfFile of pdfFiles) {
-      if (pdfFile && pdfFile instanceof File && pdfFile.size) {
-        try {
-          const url = await fileToDataUrl(pdfFile);
-          if (url) {
-            console.log(`  Adding new PDF: ${pdfFile.name}`);
-            pdfDataUrls.push(url);
-          }
-        } catch (e) {
-          console.warn('Failed to read attached PDF', e);
-        }
-      }
-    }
-  } else if (existingDealData && existingDealData.attachedPdf) {
-    // No new PDFs - preserve existing ones
-    try {
-      const existingPdfs = JSON.parse(existingDealData.attachedPdf);
-      if (Array.isArray(existingPdfs)) {
-        console.log(`  💾 Preserving ${existingPdfs.length} existing PDFs`);
-        pdfDataUrls.push(...existingPdfs);
-      }
-    } catch (e) {
-      console.warn('Failed to parse existing PDFs', e);
-    }
-  }
-  
-  console.log(`  ✅ Total PDFs to save: ${pdfDataUrls.length}`);
-  
-  // Include attachedPdf if we have any
-  if (pdfDataUrls.length > 0) {
+  if (attachedPdfs.length > 0) {
+    // Extract just the data URLs
+    const pdfDataUrls = attachedPdfs.map(pdf => pdf.dataUrl);
     data.attachedPdf = JSON.stringify(pdfDataUrls);
+    console.log(`  ✅ Including ${pdfDataUrls.length} PDF(s)`);
+  } else {
+    console.log(`  ℹ️ No PDFs to include`);
   }
 
   return data;

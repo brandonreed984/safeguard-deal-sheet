@@ -65,11 +65,15 @@
         </div>
 
         <div class="pdf-upload-wrap">
-          <label class="pdf-upload-label"><span>Attach PDFs (optional - multiple files allowed)</span>
-            <input type="file" name="attachedPdfs" accept="application/pdf" multiple />
+          <label class="pdf-upload-label"><span>Attach PDFs (optional)</span>
+            <input type="file" id="pdf-file-input" accept="application/pdf" multiple />
           </label>
-          <div id="pdf-upload-filenames" style="font-size:12px;color:#555;margin-top:8px;"></div>
-          <div id="pdf-filename-display" style="font-size:14px;color:#28a745;font-weight:bold;margin-top:8px;"></div>
+          <button type="button" id="add-pdf-btn" style="margin-top:8px;padding:8px 16px;background:#1E66B4;color:white;border:none;border-radius:4px;cursor:pointer;font-weight:600;">Add PDF(s)</button>
+          
+          <!-- List of attached PDFs -->
+          <div id="attached-pdfs-list" style="margin-top:12px;">
+            <!-- PDF items will be added here dynamically -->
+          </div>
         </div>
 
       </div>
