@@ -176,18 +176,37 @@ app.post("/api/generate-pdf/:id", async (req, res) => {
     // Merge attached PDFs if any
     if (deal.attachedPdf) {
       try {
+        console.log('Attached PDF data exists, length:', deal.attachedPdf.length);
         const attachedPdfs = JSON.parse(deal.attachedPdf);
-        for (const pdfDataUrl of attachedPdfs) {
-          // Extract base64 data from data URL
-          const base64Data = pdfDataUrl.split(',')[1];
-          const pdfBytes = Buffer.from(base64Data, 'base64');
-          const attachedDoc = await PDFDocument.load(pdfBytes);
-          const attachedPages = await pdfDoc.copyPages(attachedDoc, attachedDoc.getPageIndices());
-          attachedPages.forEach(page => pdfDoc.addPage(page));
+        console.log('Parsed attached PDFs array, count:', attachedPdfs.length);
+        
+        if (Array.isArray(attachedPdfs) && attachedPdfs.length > 0) {
+          for (let i = 0; i < attachedPdfs.length; i++) {
+            const pdfDataUrl = attachedPdfs[i];
+            console.log(`Processing attached PDF ${i + 1}/${attachedPdfs.length}`);
+            
+            // Extract base64 data from data URL
+            const base64Data = pdfDataUrl.split(',')[1];
+            if (!base64Data) {
+              console.warn(`PDF ${i + 1} has no base64 data, skipping`);
+              continue;
+            }
+            
+            const pdfBytes = Buffer.from(base64Data, 'base64');
+            const attachedDoc = await PDFDocument.load(pdfBytes);
+            const attachedPages = await pdfDoc.copyPages(attachedDoc, attachedDoc.getPageIndices());
+            attachedPages.forEach(page => pdfDoc.addPage(page));
+            console.log(`Successfully merged PDF ${i + 1} (${attachedPages.length} pages)`);
+          }
+        } else {
+          console.log('No PDFs to merge or not an array');
         }
       } catch (e) {
-        console.error('Error merging attached PDFs:', e);
+        console.error('Error merging attached PDFs:', e.message);
+        console.error('Stack:', e.stack);
       }
+    } else {
+      console.log('No attached PDFs in deal data');
     }
     
     // Save the merged PDF
@@ -233,7 +252,13 @@ app.post("/api/deals", async (req, res) => {
       console.log('✅ Deal created with ID:', result.rows[0].id);
       res.json({ ok: true, id: result.rows[0].id });
     } else {
-      // SQLite
+      // SQLite - extract values to avoid parameter issues
+      const values = [
+        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
+        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
+        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
+        data.int3, data.int4, data.attachedPdf
+      ];
       const stmt = db.prepare(`
         INSERT INTO deals (
           loanNumber, amount, rateType, term, monthlyReturn, ltv,
@@ -242,12 +267,7 @@ app.post("/api/deals", async (req, res) => {
           int3Image, int4Image, attachedPdf
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      const result = stmt.run(
-        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
-        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
-        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-        data.int3, data.int4, data.attachedPdf
-      );
+      const result = stmt.run(...values);
       res.json({ ok: true, id: result.lastInsertRowid });
     }
   } catch (e) {
@@ -339,7 +359,13 @@ app.put("/api/deals/:id", async (req, res) => {
         ]
       );
     } else {
-      // SQLite
+      // SQLite - extract values to avoid parameter issues
+      const values = [
+        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
+        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
+        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
+        data.int3, data.int4, data.attachedPdf, req.params.id
+      ];
       const stmt = db.prepare(`
         UPDATE deals SET
           loanNumber=?, amount=?, rateType=?, term=?, monthlyReturn=?, ltv=?,
@@ -348,12 +374,7 @@ app.put("/api/deals/:id", async (req, res) => {
           int3Image=?, int4Image=?, attachedPdf=?, updatedAt=CURRENT_TIMESTAMP
         WHERE id = ?
       `);
-      stmt.run(
-        data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
-        data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
-        data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-        data.int3, data.int4, data.attachedPdf, req.params.id
-      );
+      stmt.run(...values);
     }
     
     res.json({ ok: true });

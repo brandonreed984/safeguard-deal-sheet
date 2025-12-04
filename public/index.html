@@ -199,7 +199,7 @@
           
           <div class="deal-actions">
             <button class="btn btn-primary btn-small" onclick="viewDeal(${deal.id})">View/Edit</button>
-            <button class="btn btn-secondary btn-small" onclick="generatePDF(${deal.id})">Generate PDF</button>
+            <button class="btn btn-secondary btn-small" onclick="generatePDF(${deal.id}, this)">Generate PDF</button>
             <button class="btn btn-danger btn-small" onclick="deleteDeal(${deal.id})">Delete</button>
           </div>
         </div>
@@ -210,18 +210,19 @@
       window.location.href = `/form.html?id=${id}`;
     }
 
-    async function generatePDF(id) {
+    async function generatePDF(id, buttonElement) {
       try {
         // Show loading indicator
-        const originalButton = event.target;
-        const originalText = originalButton.textContent;
-        originalButton.textContent = 'Generating...';
-        originalButton.disabled = true;
+        if (buttonElement) {
+          buttonElement.textContent = 'Generating...';
+          buttonElement.disabled = true;
+        }
         
         // Call server endpoint to generate merged PDF
         const res = await fetch(`/api/generate-pdf/${id}`, { method: 'POST' });
         if (!res.ok) {
-          throw new Error('Failed to generate PDF');
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to generate PDF');
         }
         
         // Download the PDF
@@ -236,13 +237,16 @@
         document.body.removeChild(a);
         
         // Restore button
-        originalButton.textContent = originalText;
-        originalButton.disabled = false;
+        if (buttonElement) {
+          buttonElement.textContent = 'Generate PDF';
+          buttonElement.disabled = false;
+        }
       } catch (err) {
+        console.error('PDF generation error:', err);
         alert('Failed to generate PDF: ' + err.message);
-        if (event.target) {
-          event.target.textContent = 'Generate PDF';
-          event.target.disabled = false;
+        if (buttonElement) {
+          buttonElement.textContent = 'Generate PDF';
+          buttonElement.disabled = false;
         }
       }
     }
