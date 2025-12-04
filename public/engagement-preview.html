@@ -173,7 +173,11 @@
     }
 
     function goBack() {
-      window.history.back();
+      if (dealId) {
+        window.location.href = `/form.html?id=${dealId}`;
+      } else {
+        window.location.href = '/';
+      }
     }
 
     async function loadAgreement() {
