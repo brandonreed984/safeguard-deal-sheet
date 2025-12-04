@@ -62,12 +62,21 @@ if (DATABASE_URL) {
 
     // Add archived column if it doesn't exist (migration for existing tables)
     try {
-      await pool.query(`
-        ALTER TABLE deals ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;
+      // Check if column exists first
+      const checkCol = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='deals' AND column_name='archived'
       `);
-      console.log('✅ Deals table migration: archived column added/verified');
+      
+      if (checkCol.rows.length === 0) {
+        await pool.query(`ALTER TABLE deals ADD COLUMN archived BOOLEAN DEFAULT FALSE`);
+        console.log('✅ Deals table migration: archived column added');
+      } else {
+        console.log('✅ Deals table: archived column already exists');
+      }
     } catch (err) {
-      console.log('Deals archived column already exists or error:', err.message);
+      console.log('Deals archived column migration skipped:', err.message);
     }
 
     // Create portfolio_reviews table
@@ -91,12 +100,21 @@ if (DATABASE_URL) {
 
     // Add archived column if it doesn't exist (migration for existing tables)
     try {
-      await pool.query(`
-        ALTER TABLE portfolio_reviews ADD COLUMN IF NOT EXISTS archived BOOLEAN DEFAULT FALSE;
+      // Check if column exists first
+      const checkCol = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='portfolio_reviews' AND column_name='archived'
       `);
-      console.log('✅ Portfolio_reviews table migration: archived column added/verified');
+      
+      if (checkCol.rows.length === 0) {
+        await pool.query(`ALTER TABLE portfolio_reviews ADD COLUMN archived BOOLEAN DEFAULT FALSE`);
+        console.log('✅ Portfolio_reviews table migration: archived column added');
+      } else {
+        console.log('✅ Portfolio_reviews table: archived column already exists');
+      }
     } catch (err) {
-      console.log('Portfolio archived column already exists or error:', err.message);
+      console.log('Portfolio archived column migration skipped:', err.message);
     }
 
     console.log('✅ portfolio_reviews table ready');
@@ -151,8 +169,8 @@ if (DATABASE_URL) {
     CREATE INDEX IF NOT EXISTS idx_address ON deals(address);
     CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals(loanNumber);
     CREATE INDEX IF NOT EXISTS idx_archived ON deals(archived);
-  `);REATE INDEX IF NOT EXISTS idx_address ON deals(address);
-    CREATE INDEX IF NOT EXISTS idx_loanNumber ON deals(loanNumber);
+  `);
+
   // Create portfolio_reviews table for SQLite
   sqlite.exec(`
     CREATE TABLE IF NOT EXISTS portfolio_reviews (
