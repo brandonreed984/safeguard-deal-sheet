@@ -911,12 +911,14 @@ app.get("/api/deals/:id/engagement-agreement", requireAuth, async (req, res) => 
       return res.status(404).json({ error: 'Deal not found' });
     }
     
-    const borrowerName = deal.borrowerName || deal.clientName;
-    const borrowerAddress = deal.borrowerAddress || deal.clientAddress;
+    const borrowerName = deal.borrowerName;
+    const borrowerAddress = deal.borrowerAddress;
+    const clientName = deal.clientName;
+    const clientAddress = deal.clientAddress;
     
-    if (!borrowerName || !deal.lendingEntity || !borrowerAddress) {
+    if (!deal.lendingEntity || !clientName || !clientAddress || !borrowerName || !borrowerAddress) {
       return res.status(400).json({ 
-        error: 'Lending Entity, Borrower Name, and Borrower Address are required. Please edit the deal and add this information.' 
+        error: 'All engagement agreement fields are required: Lending Entity, Client/Lender Name, Client/Lender Address, Borrower Name, and Borrower Address.' 
       });
     }
     
@@ -1003,6 +1005,18 @@ app.get("/api/deals/:id/engagement-agreement", requireAuth, async (req, res) => 
         <div class="info-row">
           <span class="info-label">Loan Number:</span>
           <span>${deal.loanNumber}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Lender:</span>
+          <span>${deal.lendingEntity}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Lender Contact:</span>
+          <span>${clientName}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Lender Address:</span>
+          <span>${clientAddress}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Borrower:</span>
@@ -1114,7 +1128,7 @@ app.get("/api/deals/:id/engagement-agreement", requireAuth, async (req, res) => 
           <div style="margin-top: 5px;">
             <strong>${deal.lendingEntity}</strong><br>
             By: _______________________<br>
-            Name:<br>
+            Name: ${clientName}<br>
             Title:<br>
             Date:
           </div>

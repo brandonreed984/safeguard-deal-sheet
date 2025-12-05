@@ -71,8 +71,10 @@ window.addEventListener('DOMContentLoaded', async () => {
       document.querySelector('textarea[name="marketOverview"]').value = deal.marketOverview || '';
       document.querySelector('textarea[name="dealInformation"]').value = deal.dealInformation || '';
       document.querySelector('input[name="lendingEntity"]').value = deal.lendingEntity || '';
-      document.querySelector('input[name="borrowerName"]').value = deal.borrowerName || deal.clientName || '';
-      document.querySelector('input[name="borrowerAddress"]').value = deal.borrowerAddress || deal.clientAddress || '';
+      document.querySelector('input[name="clientName"]').value = deal.clientName || '';
+      document.querySelector('input[name="clientAddress"]').value = deal.clientAddress || '';
+      document.querySelector('input[name="borrowerName"]').value = deal.borrowerName || '';
+      document.querySelector('input[name="borrowerAddress"]').value = deal.borrowerAddress || '';
       
       // Load images as thumbnails if they exist
       ['hero', 'int1', 'int2', 'int3', 'int4'].forEach(name => {
@@ -578,11 +580,13 @@ if (engagementBtn) {
     }
     
     const lendingEntity = document.querySelector('input[name="lendingEntity"]').value;
+    const clientName = document.querySelector('input[name="clientName"]').value;
+    const clientAddress = document.querySelector('input[name="clientAddress"]').value;
     const borrowerName = document.querySelector('input[name="borrowerName"]').value;
     const borrowerAddress = document.querySelector('input[name="borrowerAddress"]').value;
     
-    if (!lendingEntity || !borrowerName || !borrowerAddress) {
-      alert('Please fill in Lending Entity, Borrower Name, and Borrower Address fields before previewing the engagement agreement.');
+    if (!lendingEntity || !clientName || !clientAddress || !borrowerName || !borrowerAddress) {
+      alert('Please fill in all engagement agreement fields before previewing.');
       return;
     }
     
