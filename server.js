@@ -911,9 +911,12 @@ app.get("/api/deals/:id/engagement-agreement", requireAuth, async (req, res) => 
       return res.status(404).json({ error: 'Deal not found' });
     }
     
-    if (!deal.clientName || !deal.lendingEntity || !deal.clientAddress) {
+    const borrowerName = deal.borrowerName || deal.clientName;
+    const borrowerAddress = deal.borrowerAddress || deal.clientAddress;
+    
+    if (!borrowerName || !deal.lendingEntity || !borrowerAddress) {
       return res.status(400).json({ 
-        error: 'Client Name, Client Address, and Lending Entity are required. Please edit the deal and add this information.' 
+        error: 'Lending Entity, Borrower Name, and Borrower Address are required. Please edit the deal and add this information.' 
       });
     }
     
@@ -1003,11 +1006,11 @@ app.get("/api/deals/:id/engagement-agreement", requireAuth, async (req, res) => 
         </div>
         <div class="info-row">
           <span class="info-label">Borrower:</span>
-          <span>${deal.clientName}</span>
+          <span>${borrowerName}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Borrower Address:</span>
-          <span>${deal.clientAddress}</span>
+          <span>${borrowerAddress}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Property Address:</span>
@@ -1022,7 +1025,7 @@ app.get("/api/deals/:id/engagement-agreement", requireAuth, async (req, res) => 
       <div class="section">
         <p>
           This Loan Engagement Agreement ("Agreement") is entered into as of ${today}, by and between 
-          <strong>${deal.lendingEntity}</strong> ("Lender") and <strong>${deal.clientName}</strong> ("Borrower").
+          <strong>${deal.lendingEntity}</strong> ("Lender") and <strong>${borrowerName}</strong> ("Borrower").
         </p>
       </div>
       
@@ -1120,7 +1123,7 @@ app.get("/api/deals/:id/engagement-agreement", requireAuth, async (req, res) => 
         <div class="signature-block">
           <div class="signature-line"></div>
           <div style="margin-top: 5px;">
-            <strong>${deal.clientName}</strong><br>
+            <strong>${borrowerName}</strong><br>
             Borrower<br><br><br>
             Date:
           </div>
@@ -1156,7 +1159,7 @@ app.get("/api/deals/:id/engagement-agreement", requireAuth, async (req, res) => 
       throw new Error('Generated PDF is empty');
     }
     
-    const filename = `Engagement-Agreement-${deal.loanNumber}-${deal.clientName.replace(/\s+/g, '-')}.pdf`;
+    const filename = `Engagement-Agreement-${deal.loanNumber}-${borrowerName.replace(/\s+/g, '-')}.pdf`;
     
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Length', pdfBuffer.length.toString());
@@ -1199,15 +1202,17 @@ app.post("/api/deals", requireAuth, async (req, res) => {
         "loanNumber", amount, "rateType", term, "monthlyReturn", ltv,
         address, appraisal, rent, sqft, "bedsBaths", "marketLocation",
         "marketOverview", "dealInformation", "heroImage", "int1Image", "int2Image",
-        "int3Image", "int4Image", "attachedPdf", "clientName", "lendingEntity", "clientAddress"
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+        "int3Image", "int4Image", "attachedPdf", "clientName", "lendingEntity", "clientAddress",
+        "borrowerName", "borrowerAddress"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
       RETURNING id`;
       
       const queryValues = [
         data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
         data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
         data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-        data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity, data.clientAddress
+        data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity, data.clientAddress,
+        data.borrowerName, data.borrowerAddress
       ];
       
       const result = await db.query(queryText, queryValues);
@@ -1219,15 +1224,17 @@ app.post("/api/deals", requireAuth, async (req, res) => {
         data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
         data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
         data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-        data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity, data.clientAddress
+        data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity, data.clientAddress,
+        data.borrowerName, data.borrowerAddress
       ];
       const stmt = db.prepare(`
         INSERT INTO deals (
           loanNumber, amount, rateType, term, monthlyReturn, ltv,
           address, appraisal, rent, sqft, bedsBaths, marketLocation,
           marketOverview, dealInformation, heroImage, int1Image, int2Image,
-          int3Image, int4Image, attachedPdf, clientName, lendingEntity, clientAddress
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          int3Image, int4Image, attachedPdf, clientName, lendingEntity, clientAddress,
+          borrowerName, borrowerAddress
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
       const result = stmt.run(...values);
       res.json({ ok: true, id: result.lastInsertRowid });
@@ -1312,14 +1319,16 @@ app.put("/api/deals/:id", requireAuth, async (req, res) => {
           "loanNumber"=$2, amount=$3, "rateType"=$4, term=$5, "monthlyReturn"=$6, ltv=$7,
           address=$8, appraisal=$9, rent=$10, sqft=$11, "bedsBaths"=$12, "marketLocation"=$13,
           "marketOverview"=$14, "dealInformation"=$15, "heroImage"=$16, "int1Image"=$17, "int2Image"=$18,
-          "int3Image"=$19, "int4Image"=$20, "attachedPdf"=$21, "clientName"=$22, "lendingEntity"=$23, "clientAddress"=$24, "updatedAt"=CURRENT_TIMESTAMP
+          "int3Image"=$19, "int4Image"=$20, "attachedPdf"=$21, "clientName"=$22, "lendingEntity"=$23, "clientAddress"=$24,
+          "borrowerName"=$25, "borrowerAddress"=$26, "updatedAt"=CURRENT_TIMESTAMP
         WHERE id = $1`,
         [
           req.params.id,
           data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
           data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
           data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-          data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity, data.clientAddress
+          data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity, data.clientAddress,
+          data.borrowerName, data.borrowerAddress
         ]
       );
     } else {
@@ -1328,14 +1337,16 @@ app.put("/api/deals/:id", requireAuth, async (req, res) => {
         data.loanNumber, data.amount, data.rateType, data.term, data.monthlyReturn, data.ltv,
         data.address, data.appraisal, data.rent, data.sqft, data.bedsBaths, data.marketLocation,
         data.marketOverview, data.dealInformation, data.hero, data.int1, data.int2,
-        data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity, data.clientAddress, req.params.id
+        data.int3, data.int4, data.attachedPdf, data.clientName, data.lendingEntity, data.clientAddress,
+        data.borrowerName, data.borrowerAddress, req.params.id
       ];
       const stmt = db.prepare(`
         UPDATE deals SET
           loanNumber=?, amount=?, rateType=?, term=?, monthlyReturn=?, ltv=?,
           address=?, appraisal=?, rent=?, sqft=?, bedsBaths=?, marketLocation=?,
           marketOverview=?, dealInformation=?, heroImage=?, int1Image=?, int2Image=?,
-          int3Image=?, int4Image=?, attachedPdf=?, clientName=?, lendingEntity=?, clientAddress=?, updatedAt=CURRENT_TIMESTAMP
+          int3Image=?, int4Image=?, attachedPdf=?, clientName=?, lendingEntity=?, clientAddress=?,
+          borrowerName=?, borrowerAddress=?, updatedAt=CURRENT_TIMESTAMP
         WHERE id = ?
       `);
       stmt.run(...values);

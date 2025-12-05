@@ -70,9 +70,9 @@ window.addEventListener('DOMContentLoaded', async () => {
       document.querySelector('input[name="marketLocation"]').value = deal.marketLocation || '';
       document.querySelector('textarea[name="marketOverview"]').value = deal.marketOverview || '';
       document.querySelector('textarea[name="dealInformation"]').value = deal.dealInformation || '';
-      document.querySelector('input[name="clientName"]').value = deal.clientName || '';
-      document.querySelector('input[name="clientAddress"]').value = deal.clientAddress || '';
       document.querySelector('input[name="lendingEntity"]').value = deal.lendingEntity || '';
+      document.querySelector('input[name="borrowerName"]').value = deal.borrowerName || deal.clientName || '';
+      document.querySelector('input[name="borrowerAddress"]').value = deal.borrowerAddress || deal.clientAddress || '';
       
       // Load images as thumbnails if they exist
       ['hero', 'int1', 'int2', 'int3', 'int4'].forEach(name => {
@@ -577,12 +577,12 @@ if (engagementBtn) {
       return;
     }
     
-    const clientName = document.querySelector('input[name="clientName"]').value;
-    const clientAddress = document.querySelector('input[name="clientAddress"]').value;
     const lendingEntity = document.querySelector('input[name="lendingEntity"]').value;
+    const borrowerName = document.querySelector('input[name="borrowerName"]').value;
+    const borrowerAddress = document.querySelector('input[name="borrowerAddress"]').value;
     
-    if (!clientName || !clientAddress || !lendingEntity) {
-      alert('Please fill in Client Name, Client Address, and Lending Entity fields before previewing the engagement agreement.');
+    if (!lendingEntity || !borrowerName || !borrowerAddress) {
+      alert('Please fill in Lending Entity, Borrower Name, and Borrower Address fields before previewing the engagement agreement.');
       return;
     }
     

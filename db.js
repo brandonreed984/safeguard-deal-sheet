@@ -127,6 +127,42 @@ if (DATABASE_URL) {
       console.log('Deals clientAddress column migration skipped:', err.message);
     }
 
+    // Add borrowerName column if it doesn't exist
+    try {
+      const checkCol = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='deals' AND column_name='borrowerName'
+      `);
+      
+      if (checkCol.rows.length === 0) {
+        await pool.query(`ALTER TABLE deals ADD COLUMN "borrowerName" TEXT`);
+        console.log('✅ Deals table migration: borrowerName column added');
+      } else {
+        console.log('✅ Deals table: borrowerName column already exists');
+      }
+    } catch (err) {
+      console.log('Deals borrowerName column migration skipped:', err.message);
+    }
+
+    // Add borrowerAddress column if it doesn't exist
+    try {
+      const checkCol = await pool.query(`
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='deals' AND column_name='borrowerAddress'
+      `);
+      
+      if (checkCol.rows.length === 0) {
+        await pool.query(`ALTER TABLE deals ADD COLUMN "borrowerAddress" TEXT`);
+        console.log('✅ Deals table migration: borrowerAddress column added');
+      } else {
+        console.log('✅ Deals table: borrowerAddress column already exists');
+      }
+    } catch (err) {
+      console.log('Deals borrowerAddress column migration skipped:', err.message);
+    }
+
     // Create indexes after column migration
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_address ON deals(address);
@@ -220,6 +256,8 @@ if (DATABASE_URL) {
       clientName TEXT,
       lendingEntity TEXT,
       clientAddress TEXT,
+      borrowerName TEXT,
+      borrowerAddress TEXT,
       archived INTEGER DEFAULT 0,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP

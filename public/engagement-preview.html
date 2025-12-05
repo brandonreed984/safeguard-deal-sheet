@@ -191,12 +191,16 @@
         if (!res.ok) throw new Error('Failed to load deal');
         const deal = await res.json();
 
-        if (!deal.clientName || !deal.lendingEntity || !deal.clientAddress) {
-          setStatus('Missing required fields: Client Name, Client Address, or Lending Entity', true);
+        // Use new borrower fields, fallback to old client fields
+        const borrowerName = deal.borrowerName || deal.clientName;
+        const borrowerAddress = deal.borrowerAddress || deal.clientAddress;
+
+        if (!borrowerName || !deal.lendingEntity || !borrowerAddress) {
+          setStatus('Missing required fields: Lending Entity, Borrower Name, or Borrower Address', true);
           document.getElementById('agreementContent').innerHTML = `
             <p style="text-align:center;color:#dc3545;">
               This deal is missing required engagement agreement information.<br>
-              Please go back and fill in Client Name, Client Address, and Lending Entity.
+              Please go back and fill in Lending Entity, Borrower Name, and Borrower Address.
             </p>
           `;
           return;
@@ -222,11 +226,11 @@
             </div>
             <div class="info-row">
               <span class="info-label">Borrower:</span>
-              <span>${deal.clientName}</span>
+              <span>${borrowerName}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Borrower Address:</span>
-              <span>${deal.clientAddress}</span>
+              <span>${borrowerAddress}</span>
             </div>
             <div class="info-row">
               <span class="info-label">Property Address:</span>
@@ -241,7 +245,7 @@
           <div class="section">
             <p>
               This Loan Engagement Agreement ("Agreement") is entered into as of ${today}, by and between 
-              <strong>${deal.lendingEntity}</strong> ("Lender") and <strong>${deal.clientName}</strong> ("Borrower").
+              <strong>${deal.lendingEntity}</strong> ("Lender") and <strong>${borrowerName}</strong> ("Borrower").
             </p>
           </div>
           
@@ -339,7 +343,7 @@
             <div class="signature-block">
               <div class="signature-line"></div>
               <div style="margin-top: 5px;">
-                <strong>${deal.clientName}</strong><br>
+                <strong>${borrowerName}</strong><br>
                 Borrower<br><br><br>
                 Date:
               </div>
